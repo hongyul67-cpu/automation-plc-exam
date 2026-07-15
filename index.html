@@ -96,26 +96,71 @@
     </div>
 
     <div class="card">
-      <b style="display:block; margin-bottom:10px">2. 모드 선택</b>
-      <div class="mode">
-        <button class="pcard mcard" onclick="startMode('asm')">
-          <span class="t">🧩 공정순서도 조립</span>
-          <span class="d">공정 블록을 순서대로 배열합니다. 문제마다 순서가 미묘하게 달라서, 이게 실기의 핵심입니다.</span>
-        </button>
-        <button class="pcard mcard" onclick="startMode('sim')">
-          <span class="t">🏭 가상 설비 시운전</span>
-          <span class="d">조립한 순서 그대로 설비를 돌려봅니다. 순서가 틀리면 충돌·가공불량이 눈에 보입니다.</span>
-        </button>
+      <b style="display:block; margin-bottom:4px">2. 단계 선택</b>
+      <div class="cond" style="margin-bottom:10px">
+        시험장에서 <b>공정순서도는 문제지에 주어집니다</b>. 외우는 게 목표가 아니라, 그걸 <b>래더로 옮기는 것</b>(3단계)이 실기의 본론입니다.
       </div>
+      <div id="stageList"></div>
       <div class="cond" style="margin-top:10px">
-        ※ 시운전은 조립한 순서를 사용합니다. 조립을 먼저 하면 내 순서로, 안 했으면 공정순서도대로 돌아갑니다.
+        기초(전기기호·자기유지·타이머·XG5000)가 아직이면
+        <a href="https://hongyul67-cpu.github.io/sequence-plc-master/" target="_blank" style="color:var(--acc)">시퀀스·PLC 마스터</a>를 먼저 하세요.
       </div>
     </div>
+  </section>
 
+  <!-- ============ 1단계 · 설비/IO 퀴즈 ============ -->
+  <section id="io" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b>1단계 · 설비와 I/O 파악</b> <span class="pill" id="ioProg"></span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="ioBanner"></div>
+    <div class="card">
+      <div id="ioQ" style="font-size:1.05rem; margin-bottom:12px"></div>
+      <div class="bin" id="ioOpts"></div>
+      <div class="cond" id="ioWhy" style="margin-top:10px"></div>
+    </div>
     <div class="card">
       <b style="display:block; margin-bottom:8px">📋 I/O 할당표 (참고용)</b>
-      <div class="cond" style="margin-bottom:8px">주소(X·Y)는 공개문제에 비어 있습니다 — 과제에 맞게 <b>수험자가 직접 배정</b>하는 항목입니다.</div>
+      <div class="cond" style="margin-bottom:8px">주소칸은 공개문제에 비어 있습니다 — <b>수험자가 직접 배정</b>하는 항목입니다.</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px" id="ioWrap"></div>
+    </div>
+  </section>
+
+  <!-- ============ 3단계 · 순서도 → 스텝 래더 ============ -->
+  <section id="lad" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b id="ladTitle"></b> <span class="pill" id="ladProg"></span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="ladBanner"></div>
+    <div class="card">
+      <div class="cond" style="margin-bottom:10px">
+        선생님 방식 — <b>(전환조건 + A<sub>n</sub>) · A<sub>n-1</sub> → A<sub>n</sub></b> ·
+        자기유지는 전환조건만 감싸고, 직전 스텝을 직렬로 통과합니다(그래서 앞이 끊기면 연쇄로 정지).
+      </div>
+      <div id="ladRung"></div>
+      <div style="margin-top:12px" id="ladAsk"></div>
+      <div class="bin" id="ladOpts" style="margin-top:8px"></div>
+      <div class="cond" id="ladWhy" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <b style="display:block; margin-bottom:6px">지금까지 짠 제어부</b>
+      <div id="ladDone" class="cond"></div>
+    </div>
+  </section>
+
+  <!-- ============ 4단계 · 부가조건 ============ -->
+  <section id="add" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b id="addTitle"></b> <span class="pill" id="addProg"></span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="addBanner"></div>
+    <div class="card">
+      <div id="addQ" style="font-size:1.02rem; margin-bottom:12px"></div>
+      <div class="bin" id="addOpts"></div>
+      <div class="cond" id="addWhy" style="margin-top:10px"></div>
     </div>
   </section>
 
@@ -212,14 +257,39 @@ const sBad  = () => beep(160, .3, 'sawtooth');
 const sClick= () => beep(520, .05);
 const sStep = () => beep(660, .04, 'sine');
 
+/* ===================== 진도 저장 ===================== */
+const PKEY = 'plcx_progress_v1';
+let progress = {};
+try{ progress = JSON.parse(localStorage.getItem(PKEY)) || {}; }catch(e){ progress = {}; }
+function saveBest(stage, score){
+  const k = stage + '_' + prob.id;
+  if(!(progress[k] > score)) progress[k] = score;
+  try{ localStorage.setItem(PKEY, JSON.stringify(progress)); }catch(e){}
+}
+const best = (stage, id) => progress[stage + '_' + (id==null?prob.id:id)];
+
+const STAGE_DEFS = [
+  { n:1, key:'io',  t:'설비와 I/O 파악',        d:'LS·S·SOL이 어느 기기인지, 양솔과 편솔은 뭐가 다른지.', go:()=>startStage('io') },
+  { n:2, key:'asm', t:'공정순서도 읽기',        d:'블록을 순서대로 배열해 순서도를 정확히 읽는 훈련.',   go:()=>startStage('asm') },
+  { n:3, key:'lad', t:'순서도 → 스텝 래더 ★',   d:'본론. 순서도를 A1~A11 스텝 래더로 옮깁니다.',        go:()=>startStage('lad') },
+  { n:4, key:'add', t:'부가조건 구현',          d:'램프 점등·점멸, 반복, 비상정지. 문제마다 다릅니다.',  go:()=>startStage('add') },
+  { n:5, key:'sim', t:'전체 시운전',            d:'짠 순서대로 가상 설비를 돌려 충돌·불량을 확인.',      go:()=>startStage('sim') }
+];
+
 /* ===================== 시작화면 ===================== */
 function renderHome(){
   $('probGrid').innerHTML = PROBLEMS.map(p =>
     `<button class="pcard ${p.id===prob.id?'on':''}" onclick="pickProb(${p.id})">
        <b>${p.name}</b>
        <div class="cond" style="margin-top:4px">${p.seq.length}블록 · 배출박스행 ${p.ejectMaterial}</div>
-       ${asmScore[p.id]!=null?`<span class="best">★ ${asmScore[p.id]}점</span>`:''}
      </button>`).join('');
+  $('stageList').innerHTML = STAGE_DEFS.map(s=>{
+    const b = best(s.key);
+    return `<button class="pcard mcard" style="width:100%; margin-bottom:8px" onclick="STAGE_DEFS[${s.n-1}].go()">
+      <span class="t">${b===100?'✅ ':''}${s.n}단계 · ${s.t}
+        ${b!=null?`<span class="pill" style="color:var(--gold)">★ ${b}점</span>`:''}</span>
+      <span class="d">${s.d}</span></button>`;
+  }).join('');
   const tbl = (rows, head) =>
     `<div><table><tr><th>${head}</th><th>기능</th><th>주소</th></tr>` +
     rows.map(r=>`<tr><td>${r.sym}</td><td>${r.fn}</td><td style="color:var(--dim)">?</td></tr>`).join('') +
@@ -232,14 +302,230 @@ function pickProb(id){
   sClick(); renderHome();
 }
 function goHome(){
-  ['asm','sim','done'].forEach(s=>$(s).classList.add('hide'));
+  ['asm','sim','done','io','lad','add'].forEach(s=>$(s).classList.add('hide'));
   $('home').classList.remove('hide');
   stopSim(); renderHome();
 }
-function startMode(m){
+function startStage(k){
   $('home').classList.add('hide');
-  if(m==='asm'){ $('asm').classList.remove('hide'); resetAsm(); }
-  else { $('sim').classList.remove('hide'); initSim(); }
+  $(k).classList.remove('hide');
+  if(k==='asm') resetAsm();
+  if(k==='sim') initSim();
+  if(k==='io')  startIO();
+  if(k==='lad') startLad();
+  if(k==='add') startAdd();
+}
+const startMode = startStage;   // 이전 버튼 호환
+
+/* ===================== 1단계 · 설비/IO 퀴즈 ===================== */
+let ioQs = [], ioIdx = 0, ioHit = 0;
+function buildIOQs(){
+  const qs = [];
+  IO_TABLE.in.concat(IO_TABLE.out).forEach(r=>{
+    qs.push({ q:`<b>${r.sym}</b> 은(는) 무엇입니까?`, a:r.fn,
+      pool: IO_TABLE.in.concat(IO_TABLE.out).map(x=>x.fn), why:`${r.sym} = ${r.fn}` });
+  });
+  qs.push({ q:'공급실린더(CYL1)만 <b>솔레노이드가 2개</b>(SOL1 전진 / SOL2 후진)인 이유는?',
+    a:'양솔이라 신호가 끊겨도 그 자리를 유지하기 때문',
+    pool:['양솔이라 신호가 끊겨도 그 자리를 유지하기 때문','편솔이라 스프링으로 자동 복귀하기 때문','힘이 가장 세야 하기 때문','리밋스위치가 2개이기 때문'],
+    why:'CYL1은 양솔(SOL1·SOL2). 전진·후진을 각각 명령해야 하고, 신호가 없으면 그 자리에 멈춥니다. 나머지 CYL2~4는 편솔이라 출력을 끊으면 스프링으로 복귀합니다.' });
+  qs.push({ q:'가공실린더(CYL2)를 <b>상승</b>시키려면 래더에서 어떻게 해야 합니까?',
+    a:'SOL3 출력을 끊는다 (편솔 → 스프링 복귀)',
+    pool:['SOL3 출력을 끊는다 (편솔 → 스프링 복귀)','SOL4 출력을 낸다','SOL3 출력을 계속 낸다','LS3 접점을 강제로 켠다'],
+    why:'CYL2·3·4는 편솔입니다. 상승·후진은 별도 출력이 아니라 해당 SOL 출력을 끊으면 스프링이 되돌립니다. 그래서 구동부는 보통 (스텝n · 스텝m̄) → SOL 형태가 됩니다.' });
+  qs.push({ q:'공작물이 <b>금속</b>인지 알려주는 센서는?', a:'S4',
+    pool:['S4','S3','S2','S1'], why:'S3 = 비금속 감지, S4 = 금속 감지. 헷갈리기 쉬우니 주의하세요.' });
+  return shuffle(qs).slice(0, 12);
+}
+function startIO(){ ioQs = buildIOQs(); ioIdx = 0; ioHit = 0; $('ioBanner').innerHTML=''; drawIO(); }
+function drawIO(){
+  if(ioIdx >= ioQs.length){
+    const sc = Math.round(ioHit/ioQs.length*100);
+    saveBest('io', sc); finish(sc, ioHit, ioQs.length, '설비·I/O 파악', 'io'); return;
+  }
+  const q = ioQs[ioIdx];
+  $('ioProg').textContent = `${ioIdx+1} / ${ioQs.length}`;
+  $('ioQ').innerHTML = q.q;
+  $('ioWhy').innerHTML = '';
+  const opts = shuffle(Array.from(new Set([q.a].concat(shuffle(q.pool).filter(x=>x!==q.a).slice(0,3)))));
+  $('ioOpts').innerHTML = opts.map((o,i)=>`<button class="blk" onclick="ansIO(${i})" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
+}
+function ansIO(i){
+  const q = ioQs[ioIdx], btns = [...document.querySelectorAll('#ioOpts .blk')];
+  const pick = decodeURIComponent(btns[i].dataset.v);
+  btns.forEach(b=>{ b.disabled = true;
+    if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok');
+    else if(b===btns[i]) b.classList.add('no-'); });
+  if(pick===q.a){ ioHit++; sGood(); } else sBad();
+  $('ioWhy').innerHTML = `💡 ${q.why}`;
+  setTimeout(()=>{ ioIdx++; drawIO(); }, pick===q.a ? 800 : 2300);
+}
+
+/* ===================== 3단계 · 순서도 → 스텝 래더 ===================== */
+let ladSteps = [], ladIdx = 0, ladHit = 0, ladTot = 0, ladPhase = 'cond';
+/* 한 스텝이 출력과 타이머를 동시에 구동하기도 한다(예: 문제1 A2 = 가공모터 회전 + T2 기동) */
+function driveText(s){
+  const parts = s.drive.slice();
+  if(s.timer) parts.push(`타이머 ${s.timer.name}(${s.timer.pt}) 기동`);
+  return parts.length ? parts.join(' + ') : '없음';
+}
+function startLad(){
+  ladSteps = STEPS[prob.id]; ladIdx = 0; ladHit = 0; ladTot = 0; ladPhase = 'cond';
+  $('ladTitle').textContent = `3단계 · ${prob.name} 스텝 래더`;
+  $('ladBanner').innerHTML = '';
+  $('ladDone').innerHTML = '아직 없습니다.';
+  drawLad();
+}
+/* 래더 한 줄을 그린다.
+   전환조건이 2개면 직렬 접점 2개로(선생님 래더의 LS5·LS7처럼), 자기유지 분기는
+   전환조건 묶음만 감싸고 직전 스텝 접점은 분기 밖 직렬에 둔다. */
+const WIRE = '#7aa7c7';
+function contact(cx, cy, label, isB, color){
+  const c = color || '#38bdf8';
+  return `<line x1="${cx-10}" y1="${cy-12}" x2="${cx-10}" y2="${cy+12}" stroke="${c}" stroke-width="3"/>
+          <line x1="${cx+10}" y1="${cy-12}" x2="${cx+10}" y2="${cy+12}" stroke="${c}" stroke-width="3"/>
+          ${isB ? `<line x1="${cx-8}" y1="${cy+12}" x2="${cx+8}" y2="${cy-12}" stroke="${c}" stroke-width="2"/>` : ''}
+          <text x="${cx}" y="${cy-18}" fill="${color==='#f59e0b'?'#f59e0b':'#e8f4ff'}" font-size="13" text-anchor="middle">${label}</text>`;
+}
+function rungSVG(st, prev, condShown){
+  const conds = condShown ? st.cond : ['?'];
+  const col = condShown ? '#38bdf8' : '#f59e0b';
+  const railL = 20, railR = 680, y = 46, yh = 96;
+  const first = 80, gap = 96;
+  const condXs = conds.map((_,i)=>first + i*gap);
+  const bIn = first - 34, bOut = condXs[condXs.length-1] + 34;   // 자기유지 분기 구간
+  const prevX = bOut + 62;                                        // 직전 스텝 접점
+  const coilX = 636;
+  const reset = ladIdx===0;                                       // A1은 마지막 스텝의 b접점으로 끊는다
+  const prevLabel = reset ? `A${ladSteps.length}` : prev;
+
+  let s = `<svg viewBox="0 0 700 128" style="max-width:660px">
+    <line x1="${railL}" y1="14" x2="${railL}" y2="116" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${railR}" y1="14" x2="${railR}" y2="116" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${railL}" y1="${y}" x2="${coilX-13}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${coilX+13}" y1="${y}" x2="${railR}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
+  condXs.forEach((cx,i)=>{ s += contact(cx, y, conds[i], false, col); });
+  s += contact(prevX, y, prevLabel, reset, '#38bdf8');
+  // 코일
+  s += `<circle cx="${coilX}" cy="${y}" r="13" fill="none" stroke="${WIRE}" stroke-width="2"/>
+        <text x="${coilX}" y="${y-20}" fill="#e8f4ff" font-size="13" text-anchor="middle">${st.id}</text>`;
+  // 자기유지 분기 — 전환조건만 감싼다
+  s += `<line x1="${bIn}" y1="${y}" x2="${bIn}" y2="${yh}" stroke="${WIRE}" stroke-width="2"/>
+        <line x1="${bIn}" y1="${yh}" x2="${bOut}" y2="${yh}" stroke="${WIRE}" stroke-width="2"/>
+        <line x1="${bOut}" y1="${yh}" x2="${bOut}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
+  s += contact((bIn+bOut)/2, yh, st.id, false, '#38bdf8');
+  s += `<text x="${prevX+120}" y="${yh+4}" fill="#8fb6d6" font-size="12">← 자기유지는 전환조건만 감쌉니다</text></svg>`;
+  return s;
+}
+function drawLad(){
+  if(ladIdx >= ladSteps.length){
+    const sc = Math.round(ladHit/ladTot*100);
+    saveBest('lad', sc); finish(sc, ladHit, ladTot, '스텝 래더 변환', 'lad'); return;
+  }
+  const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
+  $('ladProg').textContent = `${st.id} (${ladIdx+1}/${ladSteps.length})`;
+  $('ladWhy').innerHTML = '';
+
+  if(ladPhase==='cond'){
+    $('ladRung').innerHTML = rungSVG(st, prev, null);
+    const flow = driveText(st);
+    $('ladAsk').innerHTML = ladIdx===0
+      ? `<b>A1</b>은 무엇으로 시작합니까? <span class="cond">(구동: ${flow})</span>`
+      : `<b>${st.id}</b>의 <b style="color:var(--warn)">전환조건</b>은? — 직전 ${prev} 동작이 끝난 걸 무엇으로 압니까?
+         <span class="cond">(${st.id} 구동: ${flow})</span>`;
+    const ans = st.cond.join(' · ');
+    const pool = Object.keys(SIGNALS).map(k=>k);
+    const wrongs = shuffle(pool.filter(k=>k!==ans && !st.cond.includes(k))).slice(0,3);
+    const opts = shuffle([ans].concat(wrongs));
+    $('ladOpts').innerHTML = opts.map(o=>
+      `<button class="blk" onclick="ansLad(this)" data-v="${encodeURIComponent(o)}">
+        <span>${o}</span><span class="no">${o.split(' · ').map(x=>SIGNALS[x]||'').join(' + ')}</span></button>`).join('');
+  }else{
+    $('ladRung').innerHTML = rungSVG(st, prev, st.cond.join(' · '));
+    $('ladAsk').innerHTML = `<b>${st.id}</b>이 켜지면 <b style="color:var(--acc)">구동부</b>는 무엇을 합니까?`;
+    const ans = driveText(st);
+    const allDrives = [];
+    Object.values(STEPS).forEach(arr=>arr.forEach(s=>allDrives.push(driveText(s))));
+    const wrongs = shuffle(Array.from(new Set(allDrives)).filter(x=>x!==ans)).slice(0,3);
+    $('ladOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
+      `<button class="blk" onclick="ansLad(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
+  }
+}
+function ansLad(btn){
+  const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
+  const ans = ladPhase==='cond' ? st.cond.join(' · ') : driveText(st);
+  const pick = decodeURIComponent(btn.dataset.v);
+  const btns = [...document.querySelectorAll('#ladOpts .blk')];
+  btns.forEach(b=>{ b.disabled=true;
+    if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok');
+    else if(b===btn) b.classList.add('no-'); });
+  ladTot++;
+  const good = pick===ans;
+  if(good){ ladHit++; sGood(); } else sBad();
+
+  if(ladPhase==='cond'){
+    $('ladWhy').innerHTML = good
+      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `A${ladSteps.length}̄`}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}`
+      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}. ${ladIdx===0?'':`직전 ${prev}가 끝난 걸 이걸로 압니다.`}`;
+    setTimeout(()=>{ ladPhase='drive'; drawLad(); }, good?900:2400);
+  }else{
+    $('ladWhy').innerHTML = good ? `💡 좋습니다.` : `💡 정답은 <b>${ans}</b>`;
+    const line = `<div><b>${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${prev || `A${ladSteps.length}̄`} → ${ans}</div>`;
+    $('ladDone').innerHTML = ($('ladDone').innerHTML.startsWith('아직') ? '' : $('ladDone').innerHTML) + line;
+    setTimeout(()=>{ ladPhase='cond'; ladIdx++; drawLad(); }, good?900:2400);
+  }
+}
+
+/* ===================== 4단계 · 부가조건 ===================== */
+let addQs = [], addIdx = 0, addHit = 0;
+function buildAddQs(){
+  const qs = [];
+  const others = PROBLEMS.filter(p=>p.id!==prob.id);
+  qs.push({ q:`<b>${prob.name} 부가조건 1</b>은 무엇입니까?`, a:prob.cond.add1,
+    pool:[prob.cond.add1].concat(others.map(p=>p.cond.add1)),
+    why:'부가조건 1은 문제마다 완전히 다릅니다. 램프 조건을 문제지에서 반드시 다시 읽으세요.' });
+  /* 해제 조건은 문제마다 다르고 셋 다 그럴듯해서 자주 틀린다 */
+  qs.push({ q:`<b>${prob.name} 부가조건 3</b>(비상정지) — 스위치를 <b>해제</b>하면?`, a:prob.cond.estopRelease,
+    pool:PROBLEMS.map(p=>p.cond.estopRelease).concat(['아무 동작도 하지 않습니다.']),
+    why:`${prob.name}: ${prob.cond.add3}` });
+  qs.push({ q:`<b>${prob.name}</b>에서 <b>배출박스</b>로 가는 공작물의 재질은?`, a:prob.ejectMaterial,
+    pool:['금속','비금속'], why:`${prob.name}은 ${prob.ejectMaterial}을 배출실린더로 밀어내고, ${prob.ejectMaterial==='금속'?'비금속':'금속'}은 컨베이어 끝 저장박스로 갑니다. 문제마다 반대인 경우가 있으니 주의!` });
+  qs.push({ q:'부가조건 1·2·3은 <b>언제</b> 채점됩니까?', a:'연속동작이 이상없이 작동되는 경우에만',
+    pool:['연속동작이 이상없이 작동되는 경우에만','단속동작에서','테스트동작에서','언제나 따로 채점'],
+    why:'공개문제 요구사항 「바」 — 부가조건 1,2,3은 연속동작이 이상없이 작동되는 경우에만 채점합니다. 연속동작이 안 되면 부가조건은 0점입니다.' });
+  qs.push({ q:'<b>테스트동작이 되지 않는 작품</b>은 어떻게 됩니까?', a:'실격 — 채점 대상에서 제외',
+    pool:['실격 — 채점 대상에서 제외','해당 항목만 감점','부가조건만 0점','재시도 기회 부여'],
+    why:'수험자 유의사항 7)-(10): 테스트동작이 되지 않는 작품은 실격입니다. 테스트동작(B 스텝)을 가장 먼저 확실히 만드세요.' });
+  qs.push({ q:'시스템 <b>초기화 상태</b>가 아닌 것은?', a:'컨베이어는 저속으로 계속 회전',
+    pool:['컨베이어는 저속으로 계속 회전','모든 실린더 후진','모든 모터 정지','모든 램프 소등(부가조건1 반영)'],
+    why:'초기화 상태 = 모든 실린더 후진 / 모든 모터 정지 / 모든 램프 소등(단, 부가조건1 조건 반영).' });
+  return shuffle(qs);
+}
+function startAdd(){
+  addQs = buildAddQs(); addIdx = 0; addHit = 0;
+  $('addTitle').textContent = `4단계 · ${prob.name} 부가조건`;
+  $('addBanner').innerHTML=''; drawAdd();
+}
+function drawAdd(){
+  if(addIdx >= addQs.length){
+    const sc = Math.round(addHit/addQs.length*100);
+    saveBest('add', sc); finish(sc, addHit, addQs.length, '부가조건', 'add'); return;
+  }
+  const q = addQs[addIdx];
+  $('addProg').textContent = `${addIdx+1} / ${addQs.length}`;
+  $('addQ').innerHTML = q.q; $('addWhy').innerHTML='';
+  const opts = shuffle(Array.from(new Set([q.a].concat(q.pool.filter(x=>x!==q.a).slice(0,3)))));
+  $('addOpts').innerHTML = opts.map(o=>
+    `<button class="blk" style="text-align:left" onclick="ansAdd(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
+}
+function ansAdd(btn){
+  const q = addQs[addIdx], pick = decodeURIComponent(btn.dataset.v);
+  [...document.querySelectorAll('#addOpts .blk')].forEach(b=>{ b.disabled=true;
+    if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok');
+    else if(b===btn) b.classList.add('no-'); });
+  if(pick===q.a){ addHit++; sGood(); } else sBad();
+  $('addWhy').innerHTML = `💡 ${q.why}`;
+  setTimeout(()=>{ addIdx++; drawAdd(); }, pick===q.a?900:2600);
 }
 
 /* ===================== 조립 모드 ===================== */
@@ -287,13 +573,14 @@ function checkAsm(){
   });
   const score = Math.round(hit/prob.seq.length*100);
   asmScore[prob.id] = Math.max(asmScore[prob.id]||0, score);
+  saveBest('asm', score);
   if(hit === prob.seq.length){
     userSeq = seqArr.slice();
     $('asmBanner').innerHTML = `<div class="banner ok"><b>정답!</b> 공정순서도와 완전히 일치합니다. 이제 시운전으로 확인해 보세요.</div>`;
     $('btnCheck').disabled = true;
     $('btnToSim').classList.remove('hide');
     sGood();
-    finish(score, hit, prob.seq.length, '공정순서도 조립');
+    finish(score, hit, prob.seq.length, '공정순서도 읽기', 'asm');
   }else{
     $('asmBanner').innerHTML =
       `<div class="banner bad"><b>${prob.seq.length-hit}개 위치가 틀렸습니다.</b> (${score}점)
@@ -620,17 +907,17 @@ function estop(){
 
 /* ===================== 결과 ===================== */
 let lastResult = null;
-function finish(score, correct, total, modeName){
+function finish(score, correct, total, modeName, fromStage){
   lastResult = { score, correct, total, modeName };
   setTimeout(()=>{
-    $('asm').classList.add('hide');
+    $(fromStage || 'asm').classList.add('hide');
     $('done').classList.remove('hide');
     const grade = score>=100?'★★★':score>=80?'★★':score>=60?'★':'-';
     $('doneBody').innerHTML =
       `<div style="font-size:.9rem; color:var(--dim)">${prob.name} · ${modeName}</div>
        <div class="score">${score}점</div>
        <div style="color:var(--gold); font-size:1.2rem">${grade}</div>
-       <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 블록 정확</div>`;
+       <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 정확</div>`;
     if(rcReady()) $('btnSubmit').classList.remove('hide');
   }, 1400);
 }
