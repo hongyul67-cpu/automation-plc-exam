@@ -816,6 +816,8 @@ const bare   = c => isB(c) ? c.slice(1) : c;
 const condTxt= c => isB(c) ? bare(c) + '̄' : c;              // S3 → S3̄
 const condName = c => (SIGNALS[bare(c)] || '') + (isB(c) ? ' 아님' : '');
 const condsTxt = a => a.map(condTxt).join(' · ');
+/* 연속동작 종료 조건이 문제마다 다르다 — 대개 소진까지지만 4번은 3사이클 */
+const contTxt = () => prob.contCycles ? `${prob.contCycles}사이클 연속 작동 후 종료` : '모두 소진될 때까지';
 /* 화면에 이미 그려진 'S3̄' 같은 표기를 다시 설명으로 바꿀 때 */
 const sigLabel = t => { const b = t.replace('̄',''); return (SIGNALS[b]||'') + (t!==b ? ' 아님' : ''); };
 function contact(cx, cy, label, isB, color){
@@ -868,7 +870,7 @@ function drawLadFlow(){
   `<span class="fl ${st && !st.flow.length ? 'now' : ''}"><span class="ar">→</span>재질 판별: ${prob.ejectMaterial}은 배출박스</span>`;
   $('ladCond').innerHTML =
     (prob.repeat ? `<b>부가조건2</b> ${prob.repeat.note} — 가공실린더 하강~상승<br>` : '') +
-    `<b>단속</b> PB2로 1사이클 · <b>연속</b> PB3, 공작물 ${prob.minWork}개 이상 소진까지`;
+    `<b>단속</b> PB2로 1사이클 · <b>연속</b> PB3, 공작물 ${prob.minWork}개 이상 ${contTxt()}`;
 }
 function drawLad(){
   if(ladIdx >= ladSteps.length){
@@ -996,7 +998,7 @@ function resetAsm(){
     `공작물 재질 판별 → <b>${prob.ejectMaterial}</b>은 배출실린더 전진 → 배출박스 → 후진 / ` +
     `<b>${prob.ejectMaterial==='금속'?'비금속':'금속'}</b>은 저장박스 → 컨베이어 정지`;
   $('asmCond').innerHTML =
-    `<b>단속동작</b> PB2 — 1사이클 후 종료 · <b>연속동작</b> PB3 — 공작물 ${prob.minWork}개 이상, 모두 소진까지<br>` +
+    `<b>단속동작</b> PB2 — 1사이클 후 종료 · <b>연속동작</b> PB3 — 공작물 ${prob.minWork}개 이상, ${contTxt()}<br>` +
     `<b>부가조건1</b> ${prob.cond.add1}<br><b>부가조건2</b> ${prob.cond.add2}<br><b>부가조건3</b> ${prob.cond.add3}`;
   drawAsm();
 }
@@ -1023,7 +1025,8 @@ function checkAsm(){
   let hit = 0;
   seqArr.forEach((k,i)=>{
     const el = $('s'+i);
-    if(k === prob.seq[i]){ hit++; el.classList.add('ok'); } else { el.classList.add('no-'); }
+    /* '2초 지연'이 두 번 나오는 문제가 있다 — 키는 달라도 학생 눈에는 같은 블록이니 표시명으로 채점 */
+    if(BLOCKS[k].t === BLOCKS[prob.seq[i]].t){ hit++; el.classList.add('ok'); } else { el.classList.add('no-'); }
   });
   const score = Math.round(hit/prob.seq.length*100);
   asmScore[prob.id] = Math.max(asmScore[prob.id]||0, score);
@@ -1333,6 +1336,11 @@ async function runCycle(mode){
     setYellow('off');
     S.cycles++; S.ok++;
     sGood();
+    /* 4번은 소진까지가 아니라 3사이클 돌고 종료한다 */
+    if(mode==='연속' && prob.contCycles && S.cycles >= prob.contCycles){
+      log(`${prob.contCycles}사이클 완료 — 공정을 종료합니다.`, 'g');
+      break;
+    }
     await sleep(300);
   } while(mode==='연속' && S.works.length && !abortRun);
 
