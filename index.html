@@ -59,6 +59,21 @@
   .cond{font-size:.82rem; color:var(--dim); margin-top:6px}
   .cond b{color:var(--ink)}
 
+  /* 문제 조건은 푸는 내내 위에 붙어 있어야 한다 (스크롤로 왔다갔다 하지 않도록) */
+  .ref{position:sticky; top:0; z-index:5; max-height:40vh; overflow:auto;
+    background:#12283e; border:1px solid var(--acc2); box-shadow:0 6px 14px rgba(0,0,0,.4)}
+  .ref summary{cursor:pointer; font-weight:700; font-size:.92rem; list-style:none; outline:none}
+  .ref summary::-webkit-details-marker{display:none}
+  .ref summary::before{content:'▾ '; color:var(--acc)}
+  .ref[open] summary::before{content:'▴ '}
+  .flow{display:flex; flex-wrap:wrap; gap:4px; margin-top:8px}
+  .fl{font-size:.76rem; padding:3px 8px; border-radius:6px; background:var(--bg2);
+    border:1px solid var(--line); color:var(--dim); white-space:nowrap}
+  .fl.now{border-color:var(--gold); color:var(--gold); background:rgba(251,191,36,.12); font-weight:700}
+  .fl.past{border-color:var(--ok); color:#86efac}
+  .fl .ar{color:var(--line); margin-right:2px}
+  @media(max-width:640px){ .ref{max-height:30vh; padding:10px} }
+
   /* 시뮬레이터 */
   svg{width:100%; height:auto; display:block; background:#0a1622; border-radius:10px}
   .hud{display:flex; gap:8px; flex-wrap:wrap; font-size:.8rem; margin-top:8px}
@@ -134,6 +149,11 @@
       <button onclick="goHome()">← 처음으로</button>
     </div>
     <div id="ladBanner"></div>
+    <details class="card ref" open>
+      <summary>공정순서도 · 조건 (시험장에서 문제지로 주어지는 것)</summary>
+      <div class="flow" id="ladFlow"></div>
+      <div class="cond" id="ladCond"></div>
+    </details>
     <div class="card">
       <div class="cond" style="margin-bottom:10px">
         선생님 방식 — <b>(전환조건 + A<sub>n</sub>) · A<sub>n-1</sub> → A<sub>n</sub></b> ·
@@ -171,6 +191,10 @@
       <button onclick="goHome()">← 처음으로</button>
     </div>
     <div id="asmBanner"></div>
+    <details class="card ref" open>
+      <summary>문제 조건 (계속 열어두고 보세요)</summary>
+      <div class="cond" id="asmCond"></div>
+    </details>
     <div class="asm">
       <div class="card">
         <b style="display:block; margin-bottom:8px">부품함 <span class="pill" id="binCount"></span></b>
@@ -188,10 +212,6 @@
           <button id="btnToSim" class="hide" onclick="startMode('sim')">🏭 이 순서로 시운전 →</button>
         </div>
       </div>
-    </div>
-    <div class="card">
-      <b>조건 요약</b>
-      <div class="cond" id="asmCond"></div>
     </div>
   </section>
 
@@ -417,6 +437,22 @@ function rungSVG(st, prev, condShown){
   s += `<text x="${prevX+120}" y="${yh+4}" fill="#8fb6d6" font-size="12">← 자기유지는 전환조건만 감쌉니다</text></svg>`;
   return s;
 }
+/* 공정순서도 참고 패널 — 시험장에서 문제지로 주어지는 것이므로 푸는 내내 보여준다.
+   지금 다루는 스텝이 순서도의 어느 줄인지 표시해 왔다갔다 하지 않게 한다. */
+function drawLadFlow(){
+  const st = ladSteps[ladIdx];
+  const nowKeys = st ? (st.flow || []) : [];
+  const pastKeys = [];
+  ladSteps.slice(0, ladIdx).forEach(s => (s.flow||[]).forEach(k => pastKeys.push(k)));
+  $('ladFlow').innerHTML = prob.seq.map(k=>{
+    const cls = nowKeys.includes(k) ? 'now' : (pastKeys.includes(k) ? 'past' : '');
+    return `<span class="fl ${cls}"><span class="ar">→</span>${BLOCKS[k].t}</span>`;
+  }).join('') +
+  `<span class="fl ${st && !st.flow.length ? 'now' : ''}"><span class="ar">→</span>재질 판별: ${prob.ejectMaterial}은 배출박스</span>`;
+  $('ladCond').innerHTML =
+    (prob.repeat ? `<b>부가조건2</b> ${prob.repeat.note} — 가공실린더 하강~상승<br>` : '') +
+    `<b>단속</b> PB2로 1사이클 · <b>연속</b> PB3, 공작물 ${prob.minWork}개 이상 소진까지`;
+}
 function drawLad(){
   if(ladIdx >= ladSteps.length){
     const sc = Math.round(ladHit/ladTot*100);
@@ -425,6 +461,7 @@ function drawLad(){
   const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
   $('ladProg').textContent = `${st.id} (${ladIdx+1}/${ladSteps.length})`;
   $('ladWhy').innerHTML = '';
+  drawLadFlow();
 
   if(ladPhase==='cond'){
     $('ladRung').innerHTML = rungSVG(st, prev, null);

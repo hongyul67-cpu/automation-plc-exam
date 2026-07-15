@@ -85,46 +85,47 @@ window.SIGNALS = {
      문제2·3은 공정순서도에서 같은 규칙으로 유도한 것이라 검수 필요.
    cond  : 전환조건(2개면 직렬 AND)
    drive : 이 스텝이 구동하는 것(구동부) — 편솔은 스텝이 끊기면 스프링으로 복귀
-   timer : 이 스텝이 起動하는 타이머 */
+   timer : 이 스텝이 起動하는 타이머
+   flow  : 이 스텝이 담당하는 공정순서도 블록(3단계 참고 패널에서 '지금 여기' 표시용) */
 window.STEPS = {
   1: [
-    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'] },
-    { id:'A2',  cond:['LS2'],      drive:['M1 가공모터 회전'], timer:{name:'T2', pt:'T#1S'} },
-    { id:'A3',  cond:['T2.Q'],     drive:['SOL3 가공실린더 하강'] },
-    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#2S'} },
-    { id:'A5',  cond:['T3.Q'],     drive:['SOL3 OFF → 가공실린더 상승'] },
-    { id:'A6',  cond:['LS3'],      drive:['M1 정지','SOL2 공급실린더 후진'] },
-    { id:'A7',  cond:['LS1'],      drive:['SOL4 송출실린더 전진'] },
-    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'] },
-    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'] },
-    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'] }
+    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:['M1 가공모터 회전'], timer:{name:'T2', pt:'T#1S'}, flow:['drill_run','delay1'] },
+    { id:'A3',  cond:['T2.Q'],     drive:['SOL3 가공실린더 하강'], flow:['mach_down'] },
+    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#2S'}, flow:['delay2'] },
+    { id:'A5',  cond:['T3.Q'],     drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A6',  cond:['LS3'],      drive:['M1 정지','SOL2 공급실린더 후진'], flow:['drill_stop','sup_bwd'] },
+    { id:'A7',  cond:['LS1'],      drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
+    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
   ],
   2: [
-    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'] },
-    { id:'A2',  cond:['LS2'],      drive:[], timer:{name:'T2', pt:'T#1S'} },
-    { id:'A3',  cond:['T2.Q'],     drive:['M1 가공모터 회전','SOL3 가공실린더 하강'] },
-    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#2S'} },
-    { id:'A5',  cond:['T3.Q'],     drive:['M1 정지','SOL2 공급실린더 후진'] },
-    { id:'A6',  cond:['LS1'],      drive:['SOL3 OFF → 가공실린더 상승'] },
-    { id:'A7',  cond:['LS3'],      drive:['SOL4 송출실린더 전진'] },
-    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'] },
-    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'] },
-    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'] }
+    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:[], timer:{name:'T2', pt:'T#1S'}, flow:['delay1'] },
+    { id:'A3',  cond:['T2.Q'],     drive:['M1 가공모터 회전','SOL3 가공실린더 하강'], flow:['drill_run','mach_down'] },
+    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#2S'}, flow:['delay2'] },
+    { id:'A5',  cond:['T3.Q'],     drive:['M1 정지','SOL2 공급실린더 후진'], flow:['drill_stop','sup_bwd'] },
+    { id:'A6',  cond:['LS1'],      drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A7',  cond:['LS3'],      drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
+    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
   ],
   3: [
-    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'] },
-    { id:'A2',  cond:['LS2'],      drive:['SOL2 공급실린더 후진'] },
-    { id:'A3',  cond:['LS1'],      drive:['M1 가공모터 회전','SOL3 가공실린더 하강'] },
-    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T2', pt:'T#1S'} },
-    { id:'A5',  cond:['T2.Q'],     drive:['SOL3 OFF → 가공실린더 상승'] },
-    { id:'A6',  cond:['LS3'],      drive:['M1 정지'], timer:{name:'T3', pt:'T#2S'} },
-    { id:'A7',  cond:['T3.Q'],     drive:['SOL4 송출실린더 전진'] },
-    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'] },
-    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'] },
-    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'] }
+    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:['SOL2 공급실린더 후진'], flow:['sup_bwd'] },
+    { id:'A3',  cond:['LS1'],      drive:['M1 가공모터 회전','SOL3 가공실린더 하강'], flow:['drill_run','mach_down'] },
+    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T2', pt:'T#1S'}, flow:['delay1'] },
+    { id:'A5',  cond:['T2.Q'],     drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A6',  cond:['LS3'],      drive:['M1 정지'], timer:{name:'T3', pt:'T#2S'}, flow:['drill_stop','delay2'] },
+    { id:'A7',  cond:['T3.Q'],     drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
+    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
   ]
 };
 
