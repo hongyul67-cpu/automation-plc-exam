@@ -15,8 +15,10 @@ window.IO_TABLE = {
     { sym: 'LS8', fn: '배출실린더 전진' },
     { sym: 'S1', fn: '매거진 적재 감지' },
     { sym: 'S2', fn: '이송 감지' },
-    { sym: 'S3', fn: '비금속 감지' },
-    { sym: 'S4', fn: '금속 감지' },
+    /* 공개문제 표기는 S3 '비금속 감지' / S4 '금속 감지'지만, 실제 센서는
+       S3=유도형(금속만), S4=정전용량형(전부)이라 아래처럼 쓴다. 배우기에서 이 차이를 짚는다. */
+    { sym: 'S3', fn: '금속 감지 (유도형)' },
+    { sym: 'S4', fn: '공작물 감지 (정전용량형 · 재질 무관)' },
     { sym: 'SW1', fn: 'PB1 스위치' },
     { sym: 'SW2', fn: 'PB2 스위치' },
     { sym: 'SW3', fn: 'PB3 스위치' },
@@ -72,8 +74,11 @@ window.IO_GROUPS = [
     rows:[['LS5','후진 완료'],['LS6','전진 완료'],['SOL4','전진']] },
   { g:'CYL4 배출실린더', note:'편솔 — SOL5를 끊으면 후진',
     rows:[['LS7','후진 완료'],['LS8','전진 완료'],['SOL5','전진']] },
-  { g:'센서', note:'S3·S4 헷갈리지 않기',
-    rows:[['S1','매거진 공작물'],['S2','이송 감지'],['S3','비금속'],['S4','금속']] },
+  /* S3·S4는 공개문제 표기(S3 비금속·S4 금속)와 실제 동작이 다르다.
+     S3은 유도형이라 금속만 잡고, S4는 정전용량형이라 재질 상관없이 전부 잡는다.
+     그래서 금속 = S3, 비금속 = S4·S3̄ 로 판별하고, 개수 세기는 S4로 한다. */
+  { g:'센서', note:'금속 = S3 / 비금속 = S4·S3̄',
+    rows:[['S1','매거진 공작물'],['S2','이송 감지'],['S3','금속만 (유도형)'],['S4','전부 (정전용량형)']] },
   { g:'스위치', note:'',
     rows:[['SW1','PB1'],['SW2','PB2'],['SW3','PB3'],['SW4','비상정지']] },
   { g:'그 외 출력', note:'',
@@ -85,8 +90,8 @@ window.SIGNALS = {
   'PB1':  '테스트동작 시작 스위치',
   'PB2':  '단속동작 시작 스위치',
   'S1':   '매거진 공작물 감지',
-  'S3':   '비금속 감지',
-  'S4':   '금속 감지',
+  'S3':   '금속 감지 (유도형)',
+  'S4':   '공작물 감지 (재질 무관)',
   'LS1':  '공급실린더 후진 완료',
   'LS2':  '공급실린더 전진 완료',
   'LS3':  '가공실린더 상승 완료',
@@ -119,8 +124,10 @@ window.STEPS = {
     { id:'A7',  cond:['LS1'],      drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
     { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
     { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
-    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'], flow:[] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
+    /* 금속 = S3 (유도형이 잡음) */
+    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ],
   2: [
     { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
@@ -132,8 +139,10 @@ window.STEPS = {
     { id:'A7',  cond:['LS3'],      drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
     { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
     { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
-    { id:'A10', cond:['S4'],       drive:['SOL5 배출실린더 전진'], flow:[] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
+    /* 금속 = S3. 노션 A1 rung이 A12̄로 끊는 것에 맞춰 배출후진(A11)과 컨베이어 정지(A12)를 나눔 */
+    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ],
   3: [
     { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
@@ -145,8 +154,10 @@ window.STEPS = {
     { id:'A7',  cond:['T3.Q'],     drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
     { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
     { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
-    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
-    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진','M2 정지'], flow:[] }
+    /* 3번은 비금속을 배출박스로 보낸다 → 비금속 = S4·S3̄ (전부 잡히는데 금속은 아님) */
+    { id:'A10', cond:['S4','!S3'], drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ]
 };
 

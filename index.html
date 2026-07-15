@@ -420,7 +420,11 @@ function buildLearn(key){
     P1.push(H2('센서 S와 스위치 SW') +
       ioRows(IO_TABLE.in.filter(r=>r.sym.startsWith('S') && !r.sym.startsWith('SW')), '입력') +
       ioRows(IO_TABLE.in.filter(r=>r.sym.startsWith('SW')), '입력') +
-      TIP('<b>S3이 비금속, S4가 금속</b>입니다. 이거 하나는 꼭 외우세요 — 시험에서 제일 많이 헷갈립니다.'));
+      P('여기서 <b>가장 중요한 게 S3과 S4</b>입니다. 이름만 보면 헷갈리니 <b>실제로 어떻게 생긴 센서인지</b>로 기억하세요.') +
+      P('<b>S3은 유도형</b>이라 <b>금속만</b> 반응합니다. <b>S4는 정전용량형</b>이라 <b>재질과 상관없이 전부</b> 반응합니다.') +
+      P('그래서 판별은 이렇게 합니다:<br>· <b>금속 = S3</b><br>· <b>비금속 = S4 · S3̄</b> — 공작물은 왔는데(S4) 금속은 아니다(S3 꺼짐)') +
+      TIP('비금속만 잡는 센서는 <b>없습니다.</b> "비금속 = 비금속센서"라고 생각하면 래더가 안 풀립니다. 그리고 개수를 재질 상관없이 셀 때도 <b>S4</b>로 셉니다.') +
+      TIP('⚠️ 공개문제 I/O표에는 S3이 "비금속 감지", S4가 "금속 감지"로 적혀 있습니다. 글자와 실제 동작이 다르니 <b>표의 이름이 아니라 센서의 성질</b>을 기준으로 프로그램하세요.'));
     P1.push(H2('출력 — 실린더를 움직이는 SOL') +
       ioRows(IO_TABLE.out.filter(r=>r.sym.startsWith('SOL')), '출력') +
       P('<b>공급실린더만 SOL이 2개</b>(SOL1 전진 / SOL2 후진)입니다. 이걸 <b>양솔</b>이라 합니다. 전진도 후진도 각각 명령해야 하고, 신호가 없으면 그 자리에 그냥 멈춰 있습니다.') +
@@ -457,19 +461,19 @@ function buildLearn(key){
     bs.forEach((st,i)=>{
       const prev = i>0 ? bs[i-1].id : null;
       const saved=[ladSteps,ladIdx]; ladSteps=bs; ladIdx=i;
-      const rung = rungSVG(st, prev, st.cond.join(' · '));
+      const rung = rungSVG(st, prev, condsTxt(st.cond));
       [ladSteps,ladIdx]=saved;
       P1.push(H2(`${st.id} · 선도 ${i+1}단계`) +
         dispSVG(prob.id, i+1) + rung +
-        P(`<b>전환조건</b> ${st.cond.join(' · ')} — ${i===0
+        P(`<b>전환조건</b> ${condsTxt(st.cond)} — ${i===0
           ? 'PB1을 누르면 시작합니다. 그리고 마지막 스텝 B'+bs.length+'의 <b>b접점</b>으로 끊어 한 바퀴 돌면 초기화됩니다.'
-          : st.cond.map(c=>`<b>${c}</b>(${SIGNALS[c]})`).join(' 그리고 ') + ' — 직전 '+prev+' 스텝이 시킨 일이 끝났다는 신호입니다.'}`) +
+          : st.cond.map(c=>`<b>${condTxt(c)}</b>(${condName(c)})`).join(' 그리고 ') + ' — 직전 '+prev+' 스텝이 시킨 일이 끝났다는 신호입니다.'}`) +
         P(`<b>구동부</b> ${driveText(st)}`) +
         (st.cond.length>1 ? TIP('직전 스텝이 <b>두 개를 동시에</b> 움직였으니, 둘 다 끝나야 넘어갑니다. 그래서 조건이 둘입니다.') : ''));
     });
     P1.push(H2('테스트동작 전체') +
       `<div class="cond" style="line-height:2">` +
-      bs.map((st,i)=>`<div><b style="color:var(--acc)">${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${i>0?bs[i-1].id:`B${bs.length}̄`} &nbsp;→&nbsp; ${driveText(st)}</div>`).join('') +
+      bs.map((st,i)=>`<div><b style="color:var(--acc)">${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${i>0?bs[i-1].id:`B${bs.length}̄`} &nbsp;→&nbsp; ${driveText(st)}</div>`).join('') +
       `</div>` +
       TIP('A체인(단속·연속)과 <b>완전히 별개</b>로 짭니다. 스텝 이름을 A/B로 나누는 이유가 이것 — 한 프로그램 안에 있어도 서로 안 엉킵니다.'));
   }
@@ -514,22 +518,22 @@ function buildLearn(key){
     sts.forEach((st,i)=>{
       const prev = i>0 ? sts[i-1].id : null;
       const saveIdx = ladIdx; ladIdx = i; ladSteps = sts;
-      const rung = rungSVG(st, prev, st.cond.join(' · '));
+      const rung = rungSVG(st, prev, condsTxt(st.cond));
       ladIdx = saveIdx;
       const flowTxt = (st.flow||[]).map(k=>BLOCKS[k].t).join(' + ');
       let why;
       if(i===0) why = `공작물이 있어야(S1) 시작할 수 있으니 PB2와 S1을 직렬로 겁니다. 그리고 마지막 스텝 A${sts.length}의 <b>b접점</b>으로 끊습니다 — 사이클이 끝나면 여기가 떨어지면서 체인 전체가 초기화됩니다.`;
-      else why = `직전 ${prev} 스텝이 시킨 일이 <b>끝났다는 신호</b>가 ${st.cond.map(c=>`<b>${c}</b>(${SIGNALS[c]})`).join(' 그리고 ')}입니다. 그게 들어오면 ${st.id}로 넘어갑니다.`;
+      else why = `직전 ${prev} 스텝이 시킨 일이 <b>끝났다는 신호</b>가 ${st.cond.map(c=>`<b>${condTxt(c)}</b>(${condName(c)})`).join(' 그리고 ')}입니다. 그게 들어오면 ${st.id}로 넘어갑니다.`;
       P1.push(H2(`${st.id} · ${flowTxt || (st.cond[0]==='S3'||st.cond[0]==='S4' ? '재질 판별 후 배출' : '마무리')}`) +
         rung +
-        P(`<b>전환조건</b> ${st.cond.join(' · ')} — ${why}`) +
+        P(`<b>전환조건</b> ${condsTxt(st.cond)} — ${why}`) +
         P(`<b>구동부</b> ${driveText(st)}`) +
         (st.timer ? TIP(`${st.id}이 타이머 ${st.timer.name}(${st.timer.pt})를 켭니다. 다 되면 <b>${st.timer.name}.Q</b>가 다음 스텝의 전환조건이 됩니다.`) : '') +
         (driveText(st).includes('OFF') ? TIP('편솔이라 <b>출력을 끊는 것</b>이 곧 복귀입니다. 새 출력을 내는 게 아닙니다.') : ''));
     });
     P1.push(H2('전체를 한 번에') +
       `<div class="cond" style="line-height:2">` +
-      sts.map((st,i)=>`<div><b style="color:var(--acc)">${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${i>0?sts[i-1].id:`A${sts.length}̄`} &nbsp;→&nbsp; ${driveText(st)}</div>`).join('') +
+      sts.map((st,i)=>`<div><b style="color:var(--acc)">${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${i>0?sts[i-1].id:`A${sts.length}̄`} &nbsp;→&nbsp; ${driveText(st)}</div>`).join('') +
       `</div>` + TIP('한 번에 다 외우려 하지 마세요. 규칙 하나 — <b>(전환조건 + 나) · 앞 스텝</b> — 만 알면 나머지는 순서도를 보고 채우는 것입니다.'));
   }
   if(key==='add'){
@@ -639,8 +643,15 @@ function buildIOQs(){
     a:'SOL3 출력을 끊는다 (편솔 → 스프링 복귀)',
     pool:['SOL3 출력을 끊는다 (편솔 → 스프링 복귀)','SOL4 출력을 낸다','SOL3 출력을 계속 낸다','LS3 접점을 강제로 켠다'],
     why:'CYL2·3·4는 편솔입니다. 상승·후진은 별도 출력이 아니라 해당 SOL 출력을 끊으면 스프링이 되돌립니다. 그래서 구동부는 보통 (스텝n · 스텝m̄) → SOL 형태가 됩니다.' });
-  qs.push({ q:'공작물이 <b>금속</b>인지 알려주는 센서는?', a:'S4',
-    pool:['S4','S3','S2','S1'], why:'S3 = 비금속 감지, S4 = 금속 감지. 헷갈리기 쉬우니 주의하세요.' });
+  qs.push({ q:'공작물이 <b>금속</b>인 것을 알려주는 센서는?', a:'S3',
+    pool:['S3','S4','S2','S1'],
+    why:'S3이 유도형이라 <b>금속만</b> 잡습니다. S4는 정전용량형이라 재질과 무관하게 <b>전부</b> 잡습니다. (공개문제 표에는 S3 "비금속 감지"·S4 "금속 감지"로 적혀 있지만 실제 동작은 이렇습니다.)' });
+  qs.push({ q:'공작물이 <b>비금속</b>인 것은 어떻게 판별합니까?', a:'S4 · S3̄ (전부 잡히는데 금속은 아님)',
+    pool:['S4 · S3̄ (전부 잡히는데 금속은 아님)','S3만 켜지면 비금속','S4만 켜지면 금속','S2 · S3̄'],
+    why:'비금속만 잡는 센서는 없습니다. S4로 "공작물이 왔다"를 알고, S3(금속)이 안 켜졌으면 비금속입니다 — 그래서 래더에서 <b>S4 · S3̄</b> 로 겁니다.' });
+  qs.push({ q:'부가조건에서 공작물 개수를 <b>재질 상관없이</b> 세려면 무엇으로 셉니까?', a:'S4',
+    pool:['S4','S3','S1','S2'],
+    why:'S4가 재질과 무관하게 전부 잡으니 카운터(CTU)의 입력으로 씁니다. S3으로 세면 금속만 세집니다.' });
   return shuffle(qs).slice(0, 12);
 }
 function startIO(){ ioQs = buildIOQs(); ioIdx = 0; ioHit = 0; $('ioBanner').innerHTML=''; drawIO(); }
@@ -731,7 +742,7 @@ function drawTst(){
   $('tstDisp').innerHTML = dispSVG(prob.id, tstIdx+1);
 
   const saved = [ladSteps, ladIdx]; ladSteps = tstSteps; ladIdx = tstIdx;
-  const rung = rungSVG(st, prev, tstPhase==='cond' ? null : st.cond.join(' · '));
+  const rung = rungSVG(st, prev, tstPhase==='cond' ? null : condsTxt(st.cond));
   [ladSteps, ladIdx] = saved;
   $('tstRung').innerHTML = rung;
 
@@ -740,11 +751,11 @@ function drawTst(){
       ? `<b>B1</b>은 무엇으로 시작합니까? <span class="cond">(구동: ${driveText(st)})</span>`
       : `<b>${st.id}</b>의 <b style="color:var(--warn)">전환조건</b>은? — 선도의 <b style="color:var(--gold)">${tstIdx+1}단계</b>로 넘어가려면 직전 ${prev} 스텝이 시킨 일이 끝나야 합니다.
          <span class="cond">(${st.id} 구동: ${driveText(st)})</span>`;
-    const ans = st.cond.join(' · ');
+    const ans = condsTxt(st.cond);
     const wrongs = shuffle(Object.keys(SIGNALS).filter(k=>k!==ans && !st.cond.includes(k))).slice(0,3);
     $('tstOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
       `<button class="blk" onclick="ansTst(this)" data-v="${encodeURIComponent(o)}">
-        <span>${o}</span><span class="no">${o.split(' · ').map(k=>SIGNALS[k]||'').join(' + ')}</span></button>`).join('');
+        <span>${o}</span><span class="no">${o.split(' · ').map(sigLabel).join(' + ')}</span></button>`).join('');
   }else{
     $('tstAsk').innerHTML = `<b>${st.id}</b>이 켜지면 <b style="color:var(--acc)">구동부</b>는 무엇을 합니까? <span class="cond">선도의 ${tstIdx+1}단계 구간을 보세요.</span>`;
     const ans = driveText(st);
@@ -757,7 +768,7 @@ function drawTst(){
 }
 function ansTst(btn){
   const st = tstSteps[tstIdx], prev = tstIdx>0 ? tstSteps[tstIdx-1].id : null;
-  const ans = tstPhase==='cond' ? st.cond.join(' · ') : driveText(st);
+  const ans = tstPhase==='cond' ? condsTxt(st.cond) : driveText(st);
   const pick = decodeURIComponent(btn.dataset.v);
   [...document.querySelectorAll('#tstOpts .blk')].forEach(b=>{ b.disabled=true;
     if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok');
@@ -769,11 +780,11 @@ function ansTst(btn){
   if(tstPhase==='cond'){
     $('tstWhy').innerHTML = good
       ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `B${tstSteps.length}̄`}</b>`
-      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}`;
+      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(condName).join(' 그리고 ')}`;
     setTimeout(()=>{ tstPhase='drive'; drawTst(); }, good?900:2400);
   }else{
     $('tstWhy').innerHTML = good ? '💡 좋습니다.' : `💡 정답은 <b>${ans}</b>`;
-    const line = `<div><b>${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${prev || `B${tstSteps.length}̄`} → ${ans}</div>`;
+    const line = `<div><b>${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${prev || `B${tstSteps.length}̄`} → ${ans}</div>`;
     $('tstDone').innerHTML = ($('tstDone').innerHTML.startsWith('아직') ? '' : $('tstDone').innerHTML) + line;
     setTimeout(()=>{ tstPhase='cond'; tstIdx++; drawTst(); }, good?900:2400);
   }
@@ -799,6 +810,14 @@ function startLad(){
    전환조건이 2개면 직렬 접점 2개로(선생님 래더의 LS5·LS7처럼), 자기유지 분기는
    전환조건 묶음만 감싸고 직전 스텝 접점은 분기 밖 직렬에 둔다. */
 const WIRE = '#7aa7c7';
+/* 전환조건에 '!S3'처럼 앞에 !를 붙이면 b접점(S3̄) — 비금속 판별(S4·S3̄)에 쓴다 */
+const isB    = c => c.charAt(0) === '!';
+const bare   = c => isB(c) ? c.slice(1) : c;
+const condTxt= c => isB(c) ? bare(c) + '̄' : c;              // S3 → S3̄
+const condName = c => (SIGNALS[bare(c)] || '') + (isB(c) ? ' 아님' : '');
+const condsTxt = a => a.map(condTxt).join(' · ');
+/* 화면에 이미 그려진 'S3̄' 같은 표기를 다시 설명으로 바꿀 때 */
+const sigLabel = t => { const b = t.replace('̄',''); return (SIGNALS[b]||'') + (t!==b ? ' 아님' : ''); };
 function contact(cx, cy, label, isB, color){
   const c = color || '#38bdf8';
   return `<line x1="${cx-10}" y1="${cy-12}" x2="${cx-10}" y2="${cy+12}" stroke="${c}" stroke-width="3"/>
@@ -823,7 +842,7 @@ function rungSVG(st, prev, condShown){
     <line x1="${railR}" y1="14" x2="${railR}" y2="112" stroke="${WIRE}" stroke-width="2"/>
     <line x1="${railL}" y1="${y}" x2="${coilX-13}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
     <line x1="${coilX+13}" y1="${y}" x2="${railR}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
-  condXs.forEach((cx,i)=>{ s += contact(cx, y, conds[i], false, col); });
+  condXs.forEach((cx,i)=>{ s += contact(cx, y, bare(conds[i]), isB(conds[i]), col); });
   s += contact(prevX, y, prevLabel, reset, '#38bdf8');
   // 코일
   s += `<circle cx="${coilX}" cy="${y}" r="13" fill="none" stroke="${WIRE}" stroke-width="2"/>
@@ -868,15 +887,15 @@ function drawLad(){
       ? `<b>A1</b>은 무엇으로 시작합니까? <span class="cond">(구동: ${flow})</span>`
       : `<b>${st.id}</b>의 <b style="color:var(--warn)">전환조건</b>은? — 직전 ${prev} 동작이 끝난 걸 무엇으로 압니까?
          <span class="cond">(${st.id} 구동: ${flow})</span>`;
-    const ans = st.cond.join(' · ');
+    const ans = condsTxt(st.cond);
     const pool = Object.keys(SIGNALS).map(k=>k);
     const wrongs = shuffle(pool.filter(k=>k!==ans && !st.cond.includes(k))).slice(0,3);
     const opts = shuffle([ans].concat(wrongs));
     $('ladOpts').innerHTML = opts.map(o=>
       `<button class="blk" onclick="ansLad(this)" data-v="${encodeURIComponent(o)}">
-        <span>${o}</span><span class="no">${o.split(' · ').map(x=>SIGNALS[x]||'').join(' + ')}</span></button>`).join('');
+        <span>${o}</span><span class="no">${o.split(' · ').map(sigLabel).join(' + ')}</span></button>`).join('');
   }else{
-    $('ladRung').innerHTML = rungSVG(st, prev, st.cond.join(' · '));
+    $('ladRung').innerHTML = rungSVG(st, prev, condsTxt(st.cond));
     $('ladAsk').innerHTML = `<b>${st.id}</b>이 켜지면 <b style="color:var(--acc)">구동부</b>는 무엇을 합니까?`;
     const ans = driveText(st);
     const allDrives = [];
@@ -888,7 +907,7 @@ function drawLad(){
 }
 function ansLad(btn){
   const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
-  const ans = ladPhase==='cond' ? st.cond.join(' · ') : driveText(st);
+  const ans = ladPhase==='cond' ? condsTxt(st.cond) : driveText(st);
   const pick = decodeURIComponent(btn.dataset.v);
   const btns = [...document.querySelectorAll('#ladOpts .blk')];
   btns.forEach(b=>{ b.disabled=true;
@@ -900,12 +919,12 @@ function ansLad(btn){
 
   if(ladPhase==='cond'){
     $('ladWhy').innerHTML = good
-      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `A${ladSteps.length}̄`}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}`
-      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}. ${ladIdx===0?'':`직전 ${prev} 스텝이 끝난 걸 이걸로 압니다.`}`;
+      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `A${ladSteps.length}̄`}</b> — ${st.cond.map(condName).join(' 그리고 ')}`
+      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(condName).join(' 그리고 ')}. ${ladIdx===0?'':`직전 ${prev} 스텝이 끝난 걸 이걸로 압니다.`}`;
     setTimeout(()=>{ ladPhase='drive'; drawLad(); }, good?900:2400);
   }else{
     $('ladWhy').innerHTML = good ? `💡 좋습니다.` : `💡 정답은 <b>${ans}</b>`;
-    const line = `<div><b>${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${prev || `A${ladSteps.length}̄`} → ${ans}</div>`;
+    const line = `<div><b>${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${prev || `A${ladSteps.length}̄`} → ${ans}</div>`;
     $('ladDone').innerHTML = ($('ladDone').innerHTML.startsWith('아직') ? '' : $('ladDone').innerHTML) + line;
     setTimeout(()=>{ ladPhase='cond'; ladIdx++; drawLad(); }, good?900:2400);
   }
@@ -1122,8 +1141,8 @@ function draw(){
         <text x="${G.machine.x+30}" y="${G.machine.y-16}" fill="${S.cyl.mach?'#fbbf24':'#8fb6d6'}" font-size="11">
           ${S.cyl.mach>.5?'하강':'상승'} · 드릴 ${S.motor.drill?'회전':'정지'}</text>`;
   // 센서
-  s += `<circle cx="${G.sense.x}" cy="${G.belt.y-34}" r="5" fill="#a78bfa"/><text x="${G.sense.x-30}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S3 비금속</text>
-        <circle cx="${G.sense.x+26}" cy="${G.belt.y-34}" r="5" fill="#94a3b8"/><text x="${G.sense.x+36}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S4 금속</text>`;
+  s += `<circle cx="${G.sense.x}" cy="${G.belt.y-34}" r="5" fill="#94a3b8"/><text x="${G.sense.x-34}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S3 금속</text>
+        <circle cx="${G.sense.x+26}" cy="${G.belt.y-34}" r="5" fill="#a78bfa"/><text x="${G.sense.x+36}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S4 전부</text>`;
   // 박스
   s += `<rect x="${G.ejx.x-30}" y="320" width="60" height="46" fill="none" stroke="#7aa7c7"/>
         <text x="${G.ejx.x-30}" y="382" fill="#8fb6d6" font-size="11">배출상자 ${S.boxes.eject}</text>
@@ -1290,7 +1309,8 @@ async function runCycle(mode){
       await moveBelt(GEO.sense.x, 900);
       if(abortRun) break;
       mat = S.onBelt.mat;
-      log(`재질 판별 — ${mat} 감지 (${mat==='금속'?'S4':'S3'} ON)`, 'g');
+      /* S4는 재질 상관없이 전부 잡고, S3(유도형)이 금속만 잡는다 */
+      log(`재질 판별 — ${mat} (S4 ON${mat==='금속' ? ' · S3 ON → 금속' : ' · S3 OFF → 비금속'})`, 'g');
       const lm = lampByMaterial(mat); if(lm) setYellow(lm);
 
       if(mat === prob.ejectMaterial){
