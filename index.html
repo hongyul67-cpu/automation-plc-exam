@@ -186,6 +186,40 @@
     </div>
   </section>
 
+  <!-- ============ 테스트동작 · 변위단계선도 → B스텝 ============ -->
+  <section id="tst" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b id="tstTitle"></b> <span class="pill" id="tstProg"></span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="tstBanner"></div>
+    <div class="ws">
+      <div class="card">
+        <div id="tstRung"></div>
+        <div style="margin-top:12px" id="tstAsk"></div>
+        <div class="bin" id="tstOpts" style="margin-top:8px"></div>
+        <div class="cond" id="tstWhy" style="margin-top:10px"></div>
+      </div>
+      <aside class="side">
+        <div class="card" style="border-color:var(--acc2)">
+          <div class="cond" style="margin:0; color:var(--warn)">선도와 할당표는 시험지에 인쇄되어 나옵니다 — 보면서 푸세요.</div>
+        </div>
+        <details class="card blk2" open>
+          <summary>📈 변위단계선도</summary>
+          <div id="tstDisp"></div>
+        </details>
+        <details class="card blk2" open>
+          <summary>🔌 I/O 할당표</summary>
+          <div id="tstIO"></div>
+        </details>
+        <details class="card blk2" open>
+          <summary>✅ 지금까지 짠 스텝</summary>
+          <div id="tstDone" class="cond"></div>
+        </details>
+      </aside>
+    </div>
+  </section>
+
   <!-- ============ 3단계 · 순서도 → 스텝 래더 ============ -->
   <section id="lad" class="hide">
     <div class="row" style="justify-content:space-between; margin-bottom:10px">
@@ -343,12 +377,15 @@ function saveBest(stage, score){
 }
 const best = (stage, id) => progress[stage + '_' + (id==null?prob.id:id)];
 
+/* 시험장 순서대로 — 테스트동작(실격 방지)이 먼저, 그다음 단속·연속.
+   스텝 방식도 더 단순한 B체인에서 먼저 익히고 A체인으로 넘어간다. */
 const STAGE_DEFS = [
-  { n:1, key:'io',  t:'설비와 I/O 파악',      d:'설비가 어떻게 생겼고 LS·S·SOL이 뭔지 먼저 눈에 익힙니다.' },
-  { n:2, key:'asm', t:'공정순서도 읽기',      d:'문제지에 주어지는 순서도를 정확히 읽는 훈련.' },
-  { n:3, key:'lad', t:'순서도 → 스텝 래더 ★', d:'본론. 순서도를 A1~A11 스텝 래더로 옮깁니다.' },
-  { n:4, key:'add', t:'부가조건 구현',        d:'램프 점등·점멸, 반복, 비상정지. 문제마다 다릅니다.' },
-  { n:5, key:'sim', t:'전체 시운전',          d:'짠 순서대로 가상 설비를 돌려 충돌·불량을 확인.', noLearn:true, noTest:true }
+  { n:1, key:'io',  t:'설비와 I/O 파악',        d:'설비가 어떻게 생겼고 LS·S·SOL이 뭔지 먼저 눈에 익힙니다.' },
+  { n:2, key:'tst', t:'테스트동작 (B스텝)',     d:'변위단계선도를 B1~B9로 옮깁니다. 이게 안 되면 실격 — 제일 먼저.' },
+  { n:3, key:'asm', t:'공정순서도 읽기',        d:'문제지에 주어지는 순서도를 정확히 읽는 훈련.' },
+  { n:4, key:'lad', t:'단속·연속 (A스텝) ★',    d:'본론. 공정순서도를 A1~A11 스텝 래더로 옮깁니다.' },
+  { n:5, key:'add', t:'부가조건 구현',          d:'램프 점등·점멸, 반복, 비상정지. 문제마다 다릅니다.' },
+  { n:6, key:'sim', t:'전체 시운전',            d:'짠 순서대로 가상 설비를 돌려 충돌·불량을 확인.', noLearn:true, noTest:true }
 ];
 
 /* ===================== 배우기 =====================
@@ -396,6 +433,45 @@ function buildLearn(key){
       P('공개문제의 I/O 할당표를 보면 <b>주소칸이 비어 있습니다.</b> "과제에 맞게 수정하여 사용하시오"라고만 되어 있죠.') +
       P('즉 LS1을 X0으로 할지 X10으로 할지는 <b>수험자가 정하고, 정한 대로 결선하고, 정한 대로 프로그램</b>하면 됩니다.') +
       TIP('그래서 이 도구도 주소를 정답으로 묻지 않습니다. 기호(LS1·SOL3…)가 어느 기기인지만 확실히 알면 됩니다.'));
+  }
+  if(key==='tst'){
+    P1.push(H2('테스트동작부터 만드는 이유') +
+      P('수험자 유의사항에 이런 게 있습니다 — <b>"테스트동작이 되지 않는 작품"은 실격.</b>') +
+      P('단속·연속을 아무리 잘 짜도 테스트동작이 안 되면 채점 자체를 안 합니다. 그래서 시험장에서 <b>가장 먼저</b> 만듭니다.') +
+      P('다행히 테스트동작은 공정순서도보다 <b>단순합니다.</b> 분기도 없고, 공작물도 필요 없고, 그냥 실린더가 정해진 순서로 왔다갔다 하면 됩니다.') +
+      TIP('스텝 방식을 여기서 처음 익히고, 익숙해진 뒤에 4단계(단속·연속)로 가면 훨씬 수월합니다.'));
+    P1.push(H2('변위단계선도 읽는 법') +
+      P('PB1을 누르면 이렇게 움직이라는 그림입니다. 가로는 <b>단계(1~9)</b>, 세로는 각 기기의 <b>0/1</b>입니다.') +
+      dispSVG(prob.id) +
+      P('<b>1</b>은 나간 상태(전진·하강), <b>0</b>은 돌아온 상태(후진·상승)입니다. 선이 <b>비스듬히 올라가는 구간이 그 동작을 하는 때</b>입니다.') +
+      P('맨 오른쪽 <b>9=1</b>은 "9단계가 곧 1단계" — 한 바퀴 돌고 처음으로 돌아온다는 뜻입니다.') +
+      TIP('빗금 친 네모는 램프가 켜져 있는 구간입니다. 선이 없는 램프(적색)는 테스트동작에서 안 켜집니다.'));
+    P1.push(H2('선도 한 칸 = 스텝 하나') +
+      P('요령은 간단합니다. <b>선이 움직이는 구간마다 스텝을 하나씩</b> 만듭니다.') +
+      P(`${prob.name}이라면 1단계에서 <b>${(BSTEPS[prob.id][0].drive[0]||'').replace(/^\S+\s/,'')}</b>이 시작되니 그게 B1입니다.`) +
+      P('그리고 그 동작이 <b>끝났다는 신호(리밋스위치)</b>가 다음 스텝의 전환조건이 됩니다. 규칙은 A체인과 똑같습니다:') +
+      `<div style="text-align:center; font-size:1.1rem; color:var(--gold); margin:10px 0">
+         (전환조건 + B<sub>n</sub>) · B<sub>n-1</sub> → B<sub>n</sub></div>` +
+      TIP('<b>두 개가 동시에 움직이면 전환조건도 두 개</b>가 됩니다 — 둘 다 끝나야 넘어가니까 직렬 AND로 겁니다.'));
+    const bs = BSTEPS[prob.id];
+    bs.forEach((st,i)=>{
+      const prev = i>0 ? bs[i-1].id : null;
+      const saved=[ladSteps,ladIdx]; ladSteps=bs; ladIdx=i;
+      const rung = rungSVG(st, prev, st.cond.join(' · '));
+      [ladSteps,ladIdx]=saved;
+      P1.push(H2(`${st.id} · 선도 ${i+1}단계`) +
+        dispSVG(prob.id, i+1) + rung +
+        P(`<b>전환조건</b> ${st.cond.join(' · ')} — ${i===0
+          ? 'PB1을 누르면 시작합니다. 그리고 마지막 스텝 B'+bs.length+'의 <b>b접점</b>으로 끊어 한 바퀴 돌면 초기화됩니다.'
+          : st.cond.map(c=>`<b>${c}</b>(${SIGNALS[c]})`).join(' 그리고 ') + ' — 직전 '+prev+' 스텝이 시킨 일이 끝났다는 신호입니다.'}`) +
+        P(`<b>구동부</b> ${driveText(st)}`) +
+        (st.cond.length>1 ? TIP('직전 스텝이 <b>두 개를 동시에</b> 움직였으니, 둘 다 끝나야 넘어갑니다. 그래서 조건이 둘입니다.') : ''));
+    });
+    P1.push(H2('테스트동작 전체') +
+      `<div class="cond" style="line-height:2">` +
+      bs.map((st,i)=>`<div><b style="color:var(--acc)">${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${i>0?bs[i-1].id:`B${bs.length}̄`} &nbsp;→&nbsp; ${driveText(st)}</div>`).join('') +
+      `</div>` +
+      TIP('A체인(단속·연속)과 <b>완전히 별개</b>로 짭니다. 스텝 이름을 A/B로 나누는 이유가 이것 — 한 프로그램 안에 있어도 서로 안 엉킵니다.'));
   }
   if(key==='asm'){
     P1.push(H2('공정순서도는 문제지에 주어집니다') +
@@ -531,7 +607,7 @@ function pickProb(id){
   sClick(); renderHome();
 }
 function goHome(){
-  ['asm','sim','done','io','lad','add','learn'].forEach(s=>$(s).classList.add('hide'));
+  ['asm','sim','done','io','lad','add','learn','tst'].forEach(s=>$(s).classList.add('hide'));
   $('home').classList.remove('hide');
   stopSim(); renderHome();
 }
@@ -541,6 +617,7 @@ function startStage(k){
   if(k==='asm') resetAsm();
   if(k==='sim') initSim();
   if(k==='io')  startIO();
+  if(k==='tst') startTst();
   if(k==='lad') startLad();
   if(k==='add') startAdd();
 }
@@ -588,6 +665,118 @@ function ansIO(i){
   if(pick===q.a){ ioHit++; sGood(); } else sBad();
   $('ioWhy').innerHTML = `💡 ${q.why}`;
   setTimeout(()=>{ ioIdx++; drawIO(); }, pick===q.a ? 800 : 2300);
+}
+
+/* ===================== 변위단계선도 도해 =====================
+   공개문제 7-2쪽의 선도를 그대로 그린다. now를 주면 그 단계 구간을 강조한다.
+   문제 중에는 정답(어느 실린더가 움직이는지)이 선도에 이미 있으니 가릴 필요가 없다 —
+   선도 자체가 시험지에 주어지는 '문제'다. */
+function dispSVG(pid, now){
+  const D = DISP[pid], N = 9;
+  const L = 76, R = 8, top = 22, rowH = 34, W = 470, H = top + D.rows.length*rowH + 14;
+  const x = s => L + (s-1)*((W-L-R)/(N-1));
+  const y = (i,v) => top + i*rowH + (v ? 4 : 22);
+  let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; max-width:${W}px">`;
+  // 단계 눈금
+  for(let i=1;i<=N;i++){
+    const hi = now && (i===now || i===now+1);
+    s += `<line x1="${x(i)}" y1="${top-6}" x2="${x(i)}" y2="${H-12}" stroke="${hi?'#fbbf24':'#254157'}" stroke-width="${hi?2:1}"/>
+          <text x="${x(i)}" y="${top-10}" fill="${hi?'#fbbf24':'#8fb6d6'}" font-size="9" text-anchor="middle">${i===N?'9=1':i}</text>`;
+  }
+  if(now) s += `<rect x="${x(now)}" y="${top-6}" width="${x(now+1)-x(now)}" height="${H-top-6}"
+                  fill="rgba(251,191,36,.10)"/>`;
+  D.rows.forEach((r,i)=>{
+    s += `<text x="${L-6}" y="${top+i*rowH+18}" fill="#8fb6d6" font-size="10" text-anchor="end">${r.n}</text>`;
+    s += `<line x1="${L}" y1="${y(i,0)}" x2="${W-R}" y2="${y(i,0)}" stroke="#1e3450" stroke-width="1"/>`;
+    if(r.lamp){
+      /* 원본 선도처럼 소등 구간에도 0 위치에 선을 긋는다 */
+      s += `<line x1="${L}" y1="${y(i,0)}" x2="${W-R}" y2="${y(i,0)}" stroke="#e8f4ff" stroke-width="2"/>`;
+      (r.on||[]).forEach(([a,b])=>{
+        s += `<rect x="${x(a)}" y="${y(i,1)}" width="${x(b)-x(a)}" height="18"
+                fill="rgba(251,191,36,.3)" stroke="#e8f4ff" stroke-width="1.5"/>`;
+      });
+    }else{
+      let v = 0; const pts = [[x(1), y(i,0)]];
+      for(let st=1; st<N; st++){
+        const e = (r.e||[]).find(([at])=>at===st);
+        if(e) v = e[1];
+        pts.push([x(st+1), y(i,v)]);
+      }
+      s += `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#e8f4ff" stroke-width="2"/>`;
+    }
+    if(r.note) s += `<text x="${x(r.note.at)+4}" y="${y(i,1)+13}" fill="#fbbf24" font-size="10">${r.note.t}</text>`;
+  });
+  return s + `</svg>`;
+}
+
+/* ===================== 테스트동작 (B스텝) ===================== */
+let tstSteps = [], tstIdx = 0, tstHit = 0, tstTot = 0, tstPhase = 'cond';
+/* 선도에서 "지금 몇 단계 구간인가" — B스텝 n은 선도의 n→n+1 구간을 담당한다 */
+function startTst(){
+  tstSteps = BSTEPS[prob.id]; tstIdx = 0; tstHit = 0; tstTot = 0; tstPhase = 'cond';
+  $('tstTitle').textContent = `2단계 · ${prob.name} 테스트동작`;
+  $('tstBanner').innerHTML = `<div class="banner warn">테스트동작이 되지 않는 작품은 <b>실격</b>입니다. 시험장에서 가장 먼저 만드세요.</div>`;
+  $('tstDone').innerHTML = '아직 없습니다.';
+  $('tstIO').innerHTML = ioGroupsHTML();
+  drawTst();
+}
+function drawTst(){
+  if(tstIdx >= tstSteps.length){
+    const sc = Math.round(tstHit/tstTot*100);
+    saveBest('tst', sc); finish(sc, tstHit, tstTot, '테스트동작 B스텝', 'tst'); return;
+  }
+  const st = tstSteps[tstIdx], prev = tstIdx>0 ? tstSteps[tstIdx-1].id : null;
+  $('tstProg').textContent = `${st.id} (${tstIdx+1}/${tstSteps.length})`;
+  $('tstWhy').innerHTML = '';
+  $('tstDisp').innerHTML = dispSVG(prob.id, tstIdx+1);
+
+  const saved = [ladSteps, ladIdx]; ladSteps = tstSteps; ladIdx = tstIdx;
+  const rung = rungSVG(st, prev, tstPhase==='cond' ? null : st.cond.join(' · '));
+  [ladSteps, ladIdx] = saved;
+  $('tstRung').innerHTML = rung;
+
+  if(tstPhase==='cond'){
+    $('tstAsk').innerHTML = tstIdx===0
+      ? `<b>B1</b>은 무엇으로 시작합니까? <span class="cond">(구동: ${driveText(st)})</span>`
+      : `<b>${st.id}</b>의 <b style="color:var(--warn)">전환조건</b>은? — 선도의 <b style="color:var(--gold)">${tstIdx+1}단계</b>로 넘어가려면 직전 ${prev} 스텝이 시킨 일이 끝나야 합니다.
+         <span class="cond">(${st.id} 구동: ${driveText(st)})</span>`;
+    const ans = st.cond.join(' · ');
+    const wrongs = shuffle(Object.keys(SIGNALS).filter(k=>k!==ans && !st.cond.includes(k))).slice(0,3);
+    $('tstOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
+      `<button class="blk" onclick="ansTst(this)" data-v="${encodeURIComponent(o)}">
+        <span>${o}</span><span class="no">${o.split(' · ').map(k=>SIGNALS[k]||'').join(' + ')}</span></button>`).join('');
+  }else{
+    $('tstAsk').innerHTML = `<b>${st.id}</b>이 켜지면 <b style="color:var(--acc)">구동부</b>는 무엇을 합니까? <span class="cond">선도의 ${tstIdx+1}단계 구간을 보세요.</span>`;
+    const ans = driveText(st);
+    const all = [];
+    Object.values(BSTEPS).forEach(arr=>arr.forEach(s=>all.push(driveText(s))));
+    const wrongs = shuffle(Array.from(new Set(all)).filter(x=>x!==ans && x!=='없음')).slice(0,3);
+    $('tstOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
+      `<button class="blk" onclick="ansTst(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
+  }
+}
+function ansTst(btn){
+  const st = tstSteps[tstIdx], prev = tstIdx>0 ? tstSteps[tstIdx-1].id : null;
+  const ans = tstPhase==='cond' ? st.cond.join(' · ') : driveText(st);
+  const pick = decodeURIComponent(btn.dataset.v);
+  [...document.querySelectorAll('#tstOpts .blk')].forEach(b=>{ b.disabled=true;
+    if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok');
+    else if(b===btn) b.classList.add('no-'); });
+  tstTot++;
+  const good = pick===ans;
+  if(good){ tstHit++; sGood(); } else sBad();
+
+  if(tstPhase==='cond'){
+    $('tstWhy').innerHTML = good
+      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `B${tstSteps.length}̄`}</b>`
+      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(c=>SIGNALS[c]).join(' 그리고 ')}`;
+    setTimeout(()=>{ tstPhase='drive'; drawTst(); }, good?900:2400);
+  }else{
+    $('tstWhy').innerHTML = good ? '💡 좋습니다.' : `💡 정답은 <b>${ans}</b>`;
+    const line = `<div><b>${st.id}</b> = (${st.cond.join(' · ')} + ${st.id}) · ${prev || `B${tstSteps.length}̄`} → ${ans}</div>`;
+    $('tstDone').innerHTML = ($('tstDone').innerHTML.startsWith('아직') ? '' : $('tstDone').innerHTML) + line;
+    setTimeout(()=>{ tstPhase='cond'; tstIdx++; drawTst(); }, good?900:2400);
+  }
 }
 
 /* ===================== 3단계 · 순서도 → 스텝 래더 ===================== */
