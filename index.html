@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>자동화설비기능사 실기 · PLC제어작업 마스터</title>
+<script src="https://hongyul67-cpu.github.io/links/collector.js" data-tool="자동화설비 실기 PLC제어작업"></script>
+<style>
+  :root{
+    --bg:#0d1b2a; --bg2:#122a41; --panel:#15304a; --line:#2f5c85;
+    --ink:#e8f4ff; --dim:#8fb6d6; --acc:#38bdf8; --acc2:#0ea5e9;
+    --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --gold:#fbbf24;
+    --metal:#94a3b8; --nonmetal:#a78bfa;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","맑은 고딕","Malgun Gothic",system-ui,sans-serif;
+    line-height:1.5}
+  .wrap{max-width:1080px; margin:0 auto; padding:14px}
+  h1{font-size:1.35rem; margin:0 0 2px}
+  .sub{color:var(--dim); font-size:.85rem; margin-bottom:14px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px}
+  button{font-family:inherit; cursor:pointer; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg2); color:var(--ink); padding:9px 14px; font-size:.92rem}
+  button:hover:not(:disabled){border-color:var(--acc)}
+  button:disabled{opacity:.45; cursor:default}
+  .btn-main{background:var(--acc2); border-color:var(--acc); font-weight:700}
+  .btn-main:hover:not(:disabled){background:var(--acc)}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .hide{display:none !important}
+  .pill{display:inline-block; padding:2px 9px; border-radius:99px; font-size:.75rem;
+    background:var(--bg2); border:1px solid var(--line); color:var(--dim)}
+
+  /* 시작화면 */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+  .pcard{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:left; position:relative}
+  .pcard.on{border-color:var(--acc); box-shadow:0 0 0 2px rgba(56,189,248,.28)}
+  .pcard b{font-size:1rem}
+  .pcard .best{position:absolute; top:8px; right:8px; font-size:.7rem; color:var(--gold)}
+  .mode{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media(max-width:640px){ .mode{grid-template-columns:1fr} }
+  .mcard{text-align:left; padding:14px; line-height:1.45}
+  .mcard .t{font-size:1.05rem; font-weight:700; display:block; margin-bottom:4px}
+  .mcard .d{font-size:.8rem; color:var(--dim)}
+
+  /* 조립 모드 */
+  .asm{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media(max-width:760px){ .asm{grid-template-columns:1fr} }
+  .bin{min-height:70px; display:flex; flex-direction:column; gap:6px}
+  .blk{background:var(--bg2); border:1px solid var(--line); border-radius:8px; padding:9px 11px;
+    font-size:.9rem; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%}
+  .blk .no{font-size:.72rem; color:var(--dim); min-width:1.4em}
+  .blk.ok{border-color:var(--ok); background:rgba(34,197,94,.14)}
+  .blk.no-{border-color:var(--bad); background:rgba(239,68,68,.14)}
+  .slot{border:1px dashed var(--line); border-radius:8px; padding:9px 11px; color:var(--dim);
+    font-size:.85rem; text-align:center}
+  .fixed{background:rgba(56,189,248,.09); border:1px solid var(--line); border-radius:8px;
+    padding:7px 11px; font-size:.82rem; color:var(--dim); text-align:center}
+  .cond{font-size:.82rem; color:var(--dim); margin-top:6px}
+  .cond b{color:var(--ink)}
+
+  /* 시뮬레이터 */
+  svg{width:100%; height:auto; display:block; background:#0a1622; border-radius:10px}
+  .hud{display:flex; gap:8px; flex-wrap:wrap; font-size:.8rem; margin-top:8px}
+  .io{padding:3px 8px; border-radius:6px; background:var(--bg2); border:1px solid var(--line); color:var(--dim)}
+  .io.on{background:rgba(34,197,94,.2); border-color:var(--ok); color:#bbf7d0}
+  .log{background:#0a1622; border:1px solid var(--line); border-radius:8px; padding:8px;
+    height:120px; overflow-y:auto; font-size:.78rem; color:var(--dim); margin-top:8px}
+  .log div{padding:1px 0}
+  .log .e{color:#fca5a5}
+  .log .g{color:#86efac}
+
+  .banner{padding:10px 12px; border-radius:9px; font-size:.9rem; margin-bottom:10px}
+  .banner.ok{background:rgba(34,197,94,.16); border:1px solid var(--ok)}
+  .banner.bad{background:rgba(239,68,68,.16); border:1px solid var(--bad)}
+  .banner.warn{background:rgba(245,158,11,.16); border:1px solid var(--warn)}
+  .score{font-size:2.2rem; font-weight:800; color:var(--gold)}
+  table{border-collapse:collapse; width:100%; font-size:.8rem}
+  th,td{border:1px solid var(--line); padding:4px 7px; text-align:left}
+  th{background:var(--bg2); color:var(--dim); font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ 시작화면 ============ -->
+  <section id="home">
+    <h1>⚙️ 자동화설비기능사 실기 · PLC제어작업</h1>
+    <div class="sub">공개문제 공정순서도를 조립하고, 가상 설비로 시운전해 봅니다.</div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:10px">
+        <b>1. 공개문제 선택</b><span class="pill" id="pilotNote">파일럿 3문제</span>
+      </div>
+      <div class="grid" id="probGrid"></div>
+    </div>
+
+    <div class="card">
+      <b style="display:block; margin-bottom:10px">2. 모드 선택</b>
+      <div class="mode">
+        <button class="pcard mcard" onclick="startMode('asm')">
+          <span class="t">🧩 공정순서도 조립</span>
+          <span class="d">공정 블록을 순서대로 배열합니다. 문제마다 순서가 미묘하게 달라서, 이게 실기의 핵심입니다.</span>
+        </button>
+        <button class="pcard mcard" onclick="startMode('sim')">
+          <span class="t">🏭 가상 설비 시운전</span>
+          <span class="d">조립한 순서 그대로 설비를 돌려봅니다. 순서가 틀리면 충돌·가공불량이 눈에 보입니다.</span>
+        </button>
+      </div>
+      <div class="cond" style="margin-top:10px">
+        ※ 시운전은 조립한 순서를 사용합니다. 조립을 먼저 하면 내 순서로, 안 했으면 공정순서도대로 돌아갑니다.
+      </div>
+    </div>
+
+    <div class="card">
+      <b style="display:block; margin-bottom:8px">📋 I/O 할당표 (참고용)</b>
+      <div class="cond" style="margin-bottom:8px">주소(X·Y)는 공개문제에 비어 있습니다 — 과제에 맞게 <b>수험자가 직접 배정</b>하는 항목입니다.</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px" id="ioWrap"></div>
+    </div>
+  </section>
+
+  <!-- ============ 조립 모드 ============ -->
+  <section id="asm" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b id="asmTitle"></b> <span class="pill">공정순서도 조립</span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="asmBanner"></div>
+    <div class="asm">
+      <div class="card">
+        <b style="display:block; margin-bottom:8px">부품함 <span class="pill" id="binCount"></span></b>
+        <div class="cond" style="margin-bottom:8px">클릭하면 오른쪽 순서에 차례로 놓입니다.</div>
+        <div class="bin" id="bin"></div>
+      </div>
+      <div class="card">
+        <b style="display:block; margin-bottom:8px">공정 순서</b>
+        <div class="fixed">시작 → 공작물 유무 「유」</div>
+        <div class="bin" id="seq" style="margin:6px 0"></div>
+        <div class="fixed" id="branchNote">공작물 재질 판별 → … → 컨베이어 정지 → 종료</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn-main" id="btnCheck" onclick="checkAsm()">채점하기</button>
+          <button onclick="resetAsm()">다시</button>
+          <button id="btnToSim" class="hide" onclick="startMode('sim')">🏭 이 순서로 시운전 →</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <b>조건 요약</b>
+      <div class="cond" id="asmCond"></div>
+    </div>
+  </section>
+
+  <!-- ============ 시뮬레이터 ============ -->
+  <section id="sim" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b id="simTitle"></b> <span class="pill" id="simSrc"></span></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div id="simBanner"></div>
+    <div class="card">
+      <div id="stage"></div>
+      <div class="hud" id="hud"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-main" id="btnPB2" onclick="runCycle('단속')">▶ PB2 단속동작 (1사이클)</button>
+        <button class="btn-main" id="btnPB3" onclick="runCycle('연속')">▶▶ PB3 연속동작</button>
+        <button id="btnStop" onclick="estop()" disabled>■ 비상정지</button>
+        <button onclick="loadWork()">↺ 공작물 재적재</button>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- ============ 결과 ============ -->
+  <section id="done" class="hide">
+    <div class="card" style="text-align:center">
+      <div id="doneBody"></div>
+      <div class="row" style="justify-content:center; margin-top:14px">
+        <button class="btn-main" onclick="goHome()">처음으로</button>
+        <button id="btnSubmit" class="hide" onclick="submitResult()">📤 선생님께 결과 제출</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="data.js"></script>
+<script>
+/* ===================== 공통 ===================== */
+const $ = id => document.getElementById(id);
+let prob = PROBLEMS[0];
+let userSeq = null;          // 조립 모드에서 확정한 순서 (없으면 정답 순서로 시운전)
+let asmScore = {};           // 문제별 최고점
+const sessStart = Date.now();
+
+function hasRC(){ return !!(window.ResultCollector && ResultCollector.config && ResultCollector.config.exec); }
+function rcReady(){ try{ return hasRC(); }catch(e){ return false; } }
+
+/* 오디오 (외부 파일 없음) */
+let ac;
+function beep(freq, dur, type){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(.06, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + dur);
+    o.start(); o.stop(ac.currentTime + dur);
+  }catch(e){}
+}
+const sGood = () => beep(880, .12);
+const sBad  = () => beep(160, .3, 'sawtooth');
+const sClick= () => beep(520, .05);
+const sStep = () => beep(660, .04, 'sine');
+
+/* ===================== 시작화면 ===================== */
+function renderHome(){
+  $('probGrid').innerHTML = PROBLEMS.map(p =>
+    `<button class="pcard ${p.id===prob.id?'on':''}" onclick="pickProb(${p.id})">
+       <b>${p.name}</b>
+       <div class="cond" style="margin-top:4px">${p.seq.length}블록 · 배출박스행 ${p.ejectMaterial}</div>
+       ${asmScore[p.id]!=null?`<span class="best">★ ${asmScore[p.id]}점</span>`:''}
+     </button>`).join('');
+  const tbl = (rows, head) =>
+    `<div><table><tr><th>${head}</th><th>기능</th><th>주소</th></tr>` +
+    rows.map(r=>`<tr><td>${r.sym}</td><td>${r.fn}</td><td style="color:var(--dim)">?</td></tr>`).join('') +
+    `</table></div>`;
+  $('ioWrap').innerHTML = tbl(IO_TABLE.in, '입력') + tbl(IO_TABLE.out, '출력');
+}
+function pickProb(id){
+  prob = PROBLEMS.find(p=>p.id===id);
+  userSeq = null;
+  sClick(); renderHome();
+}
+function goHome(){
+  ['asm','sim','done'].forEach(s=>$(s).classList.add('hide'));
+  $('home').classList.remove('hide');
+  stopSim(); renderHome();
+}
+function startMode(m){
+  $('home').classList.add('hide');
+  if(m==='asm'){ $('asm').classList.remove('hide'); resetAsm(); }
+  else { $('sim').classList.remove('hide'); initSim(); }
+}
+
+/* ===================== 조립 모드 ===================== */
+let binArr = [], seqArr = [];
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function resetAsm(){
+  binArr = shuffle(prob.seq); seqArr = [];
+  $('asmTitle').textContent = prob.name;
+  $('asmBanner').innerHTML = '';
+  $('btnCheck').disabled = false;
+  $('btnToSim').classList.add('hide');
+  $('branchNote').innerHTML =
+    `공작물 재질 판별 → <b>${prob.ejectMaterial}</b>은 배출실린더 전진 → 배출박스 → 후진 / ` +
+    `<b>${prob.ejectMaterial==='금속'?'비금속':'금속'}</b>은 저장박스 → 컨베이어 정지`;
+  $('asmCond').innerHTML =
+    `<b>단속동작</b> PB2 — 1사이클 후 종료 · <b>연속동작</b> PB3 — 공작물 ${prob.minWork}개 이상, 모두 소진까지<br>` +
+    `<b>부가조건1</b> ${prob.cond.add1}<br><b>부가조건2</b> ${prob.cond.add2}<br><b>부가조건3</b> ${prob.cond.add3}`;
+  drawAsm();
+}
+function drawAsm(){
+  $('binCount').textContent = binArr.length + '개 남음';
+  $('bin').innerHTML = binArr.length
+    ? binArr.map((k,i)=>`<button class="blk" onclick="place(${i})"><span>${BLOCKS[k].t}</span><span class="no">▶</span></button>`).join('')
+    : `<div class="slot">모두 배치했습니다</div>`;
+  const rep = prob.repeat;
+  $('seq').innerHTML = seqArr.map((k,i)=>{
+    let tag = '';
+    if(rep && k===rep.from) tag = ` <span class="pill" style="color:var(--gold)">↻ ${rep.note}</span>`;
+    return `<button class="blk" id="s${i}" onclick="unplace(${i})"><span><span class="no">${i+1}</span> ${BLOCKS[k].t}${tag}</span><span class="no">✕</span></button>`;
+  }).join('') || `<div class="slot">부품함에서 블록을 클릭하세요</div>`;
+}
+function place(i){ seqArr.push(binArr.splice(i,1)[0]); sClick(); drawAsm(); }
+function unplace(i){ binArr.push(seqArr.splice(i,1)[0]); sClick(); drawAsm(); }
+
+function checkAsm(){
+  if(seqArr.length !== prob.seq.length){
+    $('asmBanner').innerHTML = `<div class="banner warn">아직 ${prob.seq.length-seqArr.length}개가 남았습니다.</div>`;
+    sBad(); return;
+  }
+  let hit = 0;
+  seqArr.forEach((k,i)=>{
+    const el = $('s'+i);
+    if(k === prob.seq[i]){ hit++; el.classList.add('ok'); } else { el.classList.add('no-'); }
+  });
+  const score = Math.round(hit/prob.seq.length*100);
+  asmScore[prob.id] = Math.max(asmScore[prob.id]||0, score);
+  if(hit === prob.seq.length){
+    userSeq = seqArr.slice();
+    $('asmBanner').innerHTML = `<div class="banner ok"><b>정답!</b> 공정순서도와 완전히 일치합니다. 이제 시운전으로 확인해 보세요.</div>`;
+    $('btnCheck').disabled = true;
+    $('btnToSim').classList.remove('hide');
+    sGood();
+    finish(score, hit, prob.seq.length, '공정순서도 조립');
+  }else{
+    $('asmBanner').innerHTML =
+      `<div class="banner bad"><b>${prob.seq.length-hit}개 위치가 틀렸습니다.</b> (${score}점)
+       빨간 블록을 고쳐 보세요. 헷갈리면 <b>시운전</b>으로 돌려 보면 어디서 충돌하는지 보입니다.</div>`;
+    userSeq = seqArr.slice();
+    $('btnToSim').classList.remove('hide');
+    sBad();
+    setTimeout(()=>seqArr.forEach((k,i)=>{ const e=$('s'+i); if(e){e.classList.remove('ok','no-');} }), 1600);
+  }
+}
+
+/* ===================== 시뮬레이터 ===================== */
+/* 설비 좌표 (그림1 컨베이어 시스템 간략도의 평면 배치) */
+const GEO = {
+  mag:{x:150, y:120}, machine:{x:300, y:120},
+  belt:{y:245, x0:270, x1:830}, convIn:{x:300},
+  sense:{x:480}, ejx:{x:620}, keep:{x:820}
+};
+let S, raf=null, running=false, abortRun=false;
+
+function initSim(){
+  $('simTitle').textContent = prob.name;
+  $('simSrc').textContent = userSeq ? '내가 조립한 순서로 실행' : '공정순서도(정답) 순서로 실행';
+  $('simBanner').innerHTML = userSeq
+    ? '' : `<div class="banner warn">조립 모드를 먼저 하면 <b>내가 만든 순서</b>로 시운전할 수 있습니다. 지금은 공정순서도대로 돕니다.</div>`;
+  S = {
+    cyl:{ sup:0, mach:0, push:0, ej:0 },   // 0=후진/상승, 1=전진/하강
+    motor:{ drill:0, conv:0 },
+    lamp:{ PL1:0, PL2:0, PL3:0 },
+    works:[], onTable:null, onBelt:null, boxes:{eject:0, keep:0},
+    err:null, cycles:0, ok:0
+  };
+  loadWork(); draw(); log('설비 초기화 — 모든 실린더 후진, 모터 정지', 'g');
+}
+function loadWork(){
+  if(running) return;
+  /* 공개문제 「8) 시스템 초기화 상태」 — 모든 실린더 후진, 모든 모터 정지, 모든 램프 소등 */
+  S.cyl = { sup:0, mach:0, push:0, ej:0 };
+  S.motor = { drill:0, conv:0 };
+  clearInterval(blinkTimer); blinkTimer = null;
+  S.lamp = { PL1:0, PL2:0, PL3:0 };
+  S.works = []; S.boxes={eject:0, keep:0}; S.onTable=null; S.onBelt=null;
+  const n = Math.max(prob.minWork, 3);
+  for(let i=0;i<n;i++) S.works.push({ mat: Math.random()<.5 ? '금속' : '비금속' });
+  S.err=null; S.cycles=0; S.ok=0;
+  draw();
+  log(`매거진에 공작물 ${n}개 적재 (${S.works.map(w=>w.mat[0]).join('·')})`);
+}
+function log(msg, cls){
+  const d = document.createElement('div');
+  if(cls) d.className = cls;
+  d.textContent = msg; $('log').appendChild(d); $('log').scrollTop = 1e6;
+}
+function stopSim(){ abortRun=true; running=false; if(raf) cancelAnimationFrame(raf); }
+
+/* --- 그리기 --- */
+function cylSVG(x,y,len,dir,pos,label){
+  // dir: 1=오른쪽, 2=아래
+  const stroke='#7aa7c7', body='#1e3a52';
+  const ext = pos*len;
+  if(dir===1){
+    return `<g>
+      <rect x="${x-46}" y="${y-13}" width="46" height="26" rx="3" fill="${body}" stroke="${stroke}"/>
+      <line x1="${x}" y1="${y}" x2="${x+ext}" y2="${y}" stroke="${stroke}" stroke-width="3"/>
+      <rect x="${x+ext-3}" y="${y-11}" width="6" height="22" rx="2" fill="#9fd0ea"/>
+      <text x="${x-46}" y="${y-19}" fill="#8fb6d6" font-size="11">${label}</text></g>`;
+  }
+  return `<g>
+    <rect x="${x-13}" y="${y-46}" width="26" height="46" rx="3" fill="${body}" stroke="${stroke}"/>
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y+ext}" stroke="${stroke}" stroke-width="3"/>
+    <rect x="${x-11}" y="${y+ext-3}" width="22" height="6" rx="2" fill="#9fd0ea"/>
+    <text x="${x+17}" y="${y-32}" fill="#8fb6d6" font-size="11">${label}</text></g>`;
+}
+function workSVG(x,y,mat){
+  const c = mat==='금속' ? 'var(--metal)' : 'var(--nonmetal)';
+  return `<circle cx="${x}" cy="${y}" r="11" fill="${c}" stroke="#0a1622" stroke-width="2"/>
+          <text x="${x}" y="${y+4}" font-size="10" fill="#0a1622" text-anchor="middle" font-weight="700">${mat[0]}</text>`;
+}
+function draw(){
+  const G=GEO, lampOn = c => c ? 1 : .18;
+  let s = `<svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg">`;
+  // 컨베이어
+  s += `<rect x="${G.belt.x0}" y="${G.belt.y-22}" width="${G.belt.x1-G.belt.x0}" height="44" rx="6"
+          fill="#16283a" stroke="#7aa7c7"/>`;
+  for(let x=G.belt.x0+10; x<G.belt.x1; x+=26)
+    s += `<line x1="${x}" y1="${G.belt.y-22}" x2="${x}" y2="${G.belt.y+22}" stroke="${S.motor.conv?'#38bdf8':'#254157'}" stroke-width="2"/>`;
+  s += `<text x="${G.belt.x0+6}" y="${G.belt.y+38}" fill="#8fb6d6" font-size="11">컨베이어 M2 ${S.motor.conv?'▶ 구동':'정지'}</text>`;
+  // 매거진 — 맨 아래 공작물이 공급실린더 진행선(y)에 놓이도록
+  s += `<rect x="${G.mag.x-20}" y="24" width="40" height="110" fill="none" stroke="#7aa7c7" stroke-dasharray="4 3"/>
+        <text x="${G.mag.x-20}" y="18" fill="#8fb6d6" font-size="11">매거진 S1</text>`;
+  S.works.forEach((w,i)=>{ s += workSVG(G.mag.x, G.mag.y-i*23, w.mat); });
+  // 가공 테이블
+  s += `<rect x="${G.machine.x-26}" y="${G.machine.y-26}" width="52" height="52" rx="4" fill="#16283a" stroke="#7aa7c7"/>`;
+  // 공급실린더(→), 송출실린더(↓), 가공실린더(드릴), 배출실린더(↓)
+  // 스트로크는 로드 끝이 실제 목표물에 닿도록 맞춤
+  s += cylSVG(60, G.mag.y, 225, 1, S.cyl.sup, 'CYL1 공급 SOL1/2');            // → 가공위치(300) 앞
+  s += cylSVG(G.machine.x, 26, 196, 2, S.cyl.push, 'CYL3 송출 SOL4');          // 가공위치 → 컨베이어(245)
+  s += cylSVG(G.ejx.x, 150, 152, 2, S.cyl.ej, 'CYL4 배출 SOL5');               // 컨베이어 → 배출상자(320)
+  // 드릴(가공실린더): 위에서 본 그림이므로 원 크기·색으로 하강 표현
+  const dR = 13 + S.cyl.mach*7;
+  s += `<circle cx="${G.machine.x}" cy="${G.machine.y}" r="${dR}" fill="none"
+          stroke="${S.motor.drill?'#38bdf8':'#7aa7c7'}" stroke-width="${S.cyl.mach?4:2}"/>
+        <text x="${G.machine.x+30}" y="${G.machine.y-30}" fill="#8fb6d6" font-size="11">CYL2 가공 SOL3 / 드릴 M1</text>
+        <text x="${G.machine.x+30}" y="${G.machine.y-16}" fill="${S.cyl.mach?'#fbbf24':'#8fb6d6'}" font-size="11">
+          ${S.cyl.mach>.5?'하강':'상승'} · 드릴 ${S.motor.drill?'회전':'정지'}</text>`;
+  // 센서
+  s += `<circle cx="${G.sense.x}" cy="${G.belt.y-34}" r="5" fill="#a78bfa"/><text x="${G.sense.x-30}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S3 비금속</text>
+        <circle cx="${G.sense.x+26}" cy="${G.belt.y-34}" r="5" fill="#94a3b8"/><text x="${G.sense.x+36}" y="${G.belt.y-42}" fill="#8fb6d6" font-size="10">S4 금속</text>`;
+  // 박스
+  s += `<rect x="${G.ejx.x-30}" y="320" width="60" height="46" fill="none" stroke="#7aa7c7"/>
+        <text x="${G.ejx.x-30}" y="382" fill="#8fb6d6" font-size="11">배출상자 ${S.boxes.eject}</text>
+        <rect x="${G.keep.x-16}" y="${G.belt.y+34}" width="56" height="44" fill="none" stroke="#7aa7c7"/>
+        <text x="${G.keep.x-16}" y="${G.belt.y+94}" fill="#8fb6d6" font-size="11">저장상자 ${S.boxes.keep}</text>`;
+  // 타워램프
+  s += `<rect x="856" y="60" width="30" height="96" rx="5" fill="#16283a" stroke="#7aa7c7"/>
+        <circle cx="871" cy="82"  r="10" fill="#ef4444" opacity="${lampOn(S.lamp.PL1)}"/>
+        <circle cx="871" cy="108" r="10" fill="#fbbf24" opacity="${lampOn(S.lamp.PL2)}"/>
+        <circle cx="871" cy="134" r="10" fill="#22c55e" opacity="${lampOn(S.lamp.PL3)}"/>
+        <text x="843" y="174" fill="#8fb6d6" font-size="10">PL1/2/3</text>`;
+  // 공작물
+  if(S.onTable) s += workSVG(G.machine.x, G.machine.y, S.onTable.mat);
+  if(S.onBelt)  s += workSVG(S.onBelt.x, S.onBelt.y!=null?S.onBelt.y:G.belt.y, S.onBelt.mat);
+  s += `</svg>`;
+  $('stage').innerHTML = s;
+
+  const io = [];
+  io.push(['S1 매거진', S.works.length>0]);
+  io.push(['LS1 공급후진', S.cyl.sup<.02]); io.push(['LS2 공급전진', S.cyl.sup>.98]);
+  io.push(['LS3 가공상승', S.cyl.mach<.02]); io.push(['LS4 가공하강', S.cyl.mach>.98]);
+  io.push(['LS5 송출후진', S.cyl.push<.02]); io.push(['LS6 송출전진', S.cyl.push>.98]);
+  io.push(['LS7 배출후진', S.cyl.ej<.02]);   io.push(['LS8 배출전진', S.cyl.ej>.98]);
+  io.push(['M1 드릴', S.motor.drill]); io.push(['M2 컨베이어', S.motor.conv]);
+  $('hud').innerHTML = io.map(([t,on])=>`<span class="io ${on?'on':''}">${t}</span>`).join('');
+}
+
+/* --- 애니메이션 헬퍼 --- */
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+function moveCyl(dev, to, ms){
+  return new Promise(res=>{
+    const from = S.cyl[dev], t0 = performance.now();
+    (function tick(now){
+      if(abortRun) return res();
+      const k = Math.min(1, (now-t0)/ms);
+      S.cyl[dev] = from + (to-from)*k;
+      draw();
+      if(k<1) raf = requestAnimationFrame(tick); else { S.cyl[dev]=to; draw(); res(); }
+    })(t0);
+  });
+}
+function moveBelt(toX, ms){
+  return new Promise(res=>{
+    const from = S.onBelt.x, t0 = performance.now();
+    (function tick(now){
+      if(abortRun) return res();
+      const k = Math.min(1, (now-t0)/ms);
+      S.onBelt.x = from + (toX-from)*k;
+      draw();
+      if(k<1) raf = requestAnimationFrame(tick); else { S.onBelt.x=toX; draw(); res(); }
+    })(t0);
+  });
+}
+
+/* --- 한 블록 실행 (여기서 충돌·불량 판정) --- */
+async function exec(key){
+  const b = BLOCKS[key] || BRANCH_BLOCKS[key];
+  if(!b) return;
+  sStep();
+
+  // === 물리적으로 불가능한 동작 검사 ===
+  if(b.act==='cyl' && (b.dev==='sup'||b.dev==='push') && b.to===1 && S.cyl.mach>.1){
+    return fail(`💥 충돌! 가공실린더가 내려와 있는데 ${b.t}을(를) 했습니다. 드릴에 부딪힙니다.`);
+  }
+  if(key==='mach_down' && !S.motor.drill){
+    return fail(`⚠️ 가공 불량! 드릴이 정지한 상태로 가공실린더를 하강시켰습니다. 가공모터를 먼저 회전시켜야 합니다.`);
+  }
+  if(key==='mach_down' && !S.onTable){
+    return fail(`⚠️ 헛가공! 가공 위치에 공작물이 없는데 하강했습니다. 공급실린더로 공작물을 먼저 보내야 합니다.`);
+  }
+  if(key==='push_fwd' && !S.onTable){
+    return fail(`⚠️ 송출할 공작물이 없습니다. 순서를 확인하세요.`);
+  }
+
+  switch(b.act){
+    case 'cyl':
+      // 공급실린더 전진 = 매거진에서 공작물 1개를 가공위치로
+      if(key==='sup_fwd'){
+        if(!S.works.length) return fail('매거진이 비었습니다.');
+        S.onTable = S.works.pop();
+        log(`공급실린더 전진 — 공작물(${S.onTable.mat}) 가공 위치로`);
+      }
+      // 송출실린더 전진 = 가공위치 → 컨베이어
+      if(key==='push_fwd' && S.onTable){
+        S.onBelt = { mat:S.onTable.mat, x:GEO.convIn.x, y:GEO.belt.y };
+        S.onTable = null;
+        log('송출실린더 전진 — 공작물을 컨베이어로');
+      }
+      await moveCyl(b.dev, b.to, 520);
+      log(`${b.t} 완료 → ${b.ls} ON`);
+      break;
+    case 'motor':
+      S.motor[b.dev] = b.on; draw();
+      log(`${b.t} (${b.sol} ${b.on?'ON':'OFF'})`);
+      await sleep(220);
+      break;
+    case 'delay':
+      log(`${b.t} …`);
+      for(let i=0;i<b.sec*10 && !abortRun;i++) await sleep(100);
+      break;
+    case 'store':
+      S.boxes[b.box]++;
+      log(`${b.t} (누적 ${S.boxes[b.box]}개)`, 'g');
+      S.onBelt = null; draw();
+      break;
+  }
+}
+function fail(msg){
+  S.err = msg; abortRun = true;
+  log(msg, 'e'); sBad();
+  $('simBanner').innerHTML = `<div class="banner bad">${msg}</div>`;
+  return false;
+}
+
+/* --- 부가조건1 램프 (문제별) --- */
+function lampByMaterial(mat){
+  // 문제1: 금속 점등 / 비금속 점멸,  문제3: 금속 점멸 / 비금속 점등
+  if(prob.id===1) return mat==='금속' ? 'on' : 'blink';
+  if(prob.id===3) return mat==='금속' ? 'blink' : 'on';
+  return null;  // 문제2는 판별 순서 기반이라 별도
+}
+let blinkTimer=null;
+function setYellow(mode){
+  clearInterval(blinkTimer); blinkTimer=null;
+  if(mode==='on'){ S.lamp.PL2=1; }
+  else if(mode==='blink'){ let v=0; blinkTimer=setInterval(()=>{ v^=1; S.lamp.PL2=v; draw(); }, 500); }
+  else { S.lamp.PL2=0; }
+  draw();
+}
+
+/* --- 사이클 --- */
+async function runCycle(mode){
+  if(running) return;
+  running = true; abortRun = false; S.err=null;
+  $('btnPB2').disabled = $('btnPB3').disabled = true; $('btnStop').disabled = false;
+  $('simBanner').innerHTML = '';
+  const seq = userSeq || prob.seq;
+  log(`── ${mode}동작 시작 (${mode==='단속'?'PB2':'PB3'}) ──`, 'g');
+
+  do{
+    if(!S.works.length){ log('공작물이 모두 소진되어 공정을 종료합니다.', 'g'); break; }
+    S.lamp.PL3 = (prob.id===1 && S.works.length>0) ? 1 : S.lamp.PL3;  // 부가조건1(문제1): 매거진 유무 → 녹색
+    let mat = null;
+
+    for(let i=0;i<seq.length;i++){
+      if(abortRun) break;
+      await exec(seq[i]);
+      if(abortRun) break;
+      // 부가조건2(문제1): 가공 하강~상승 2회 반복
+      const rep = prob.repeat;
+      if(rep && seq[i]===rep.to && mode==='연속'){
+        const a = seq.indexOf(rep.from), b = seq.indexOf(rep.to);
+        if(a>=0 && b>a){
+          log(`↻ ${rep.note} — 2회차 반복`, 'g');
+          for(let j=a;j<=b && !abortRun;j++) await exec(seq[j]);
+        }
+      }
+    }
+    if(abortRun) break;
+
+    // 컨베이어 이송 → 재질 판별
+    if(S.onBelt){
+      if(!S.motor.conv){ fail('⚠️ 컨베이어가 정지해 있어 공작물이 이송되지 않습니다. 컨베이어 구동이 빠졌습니다.'); break; }
+      await moveBelt(GEO.sense.x, 900);
+      if(abortRun) break;
+      mat = S.onBelt.mat;
+      log(`재질 판별 — ${mat} 감지 (${mat==='금속'?'S4':'S3'} ON)`, 'g');
+      const lm = lampByMaterial(mat); if(lm) setYellow(lm);
+
+      if(mat === prob.ejectMaterial){
+        await moveBelt(GEO.ejx.x, 700);
+        if(abortRun) break;
+        await exec('ej_fwd');
+        S.onBelt && (S.onBelt.y = 340);
+        await exec('ej_box');
+        await exec('ej_bwd');
+      }else{
+        await moveBelt(GEO.keep.x, 1200);
+        if(abortRun) break;
+        await exec('keep_box');
+      }
+    }
+    if(abortRun) break;
+
+    S.motor.conv = 0; draw();
+    log('컨베이어 정지 — 1사이클 완료', 'g');
+    setYellow('off');
+    S.cycles++; S.ok++;
+    sGood();
+    await sleep(300);
+  } while(mode==='연속' && S.works.length && !abortRun);
+
+  if(!S.works.length) S.lamp.PL3 = 0;
+  draw();
+  running = false;
+  $('btnPB2').disabled = $('btnPB3').disabled = false; $('btnStop').disabled = true;
+
+  if(!S.err){
+    const isCorrect = JSON.stringify(userSeq || prob.seq) === JSON.stringify(prob.seq);
+    $('simBanner').innerHTML = isCorrect
+      ? `<div class="banner ok"><b>정상 동작!</b> ${S.cycles}사이클 완료 — 배출상자 ${S.boxes.eject}, 저장상자 ${S.boxes.keep}. 공정순서도와 일치하는 순서입니다.</div>`
+      : `<div class="banner warn"><b>돌기는 했지만</b> 공정순서도와 순서가 다릅니다. 조립 모드에서 정확한 순서를 맞춰 보세요.</div>`;
+  }
+}
+function estop(){
+  if(!running) return;
+  abortRun = true;
+  S.motor.drill = 0; S.motor.conv = 0;
+  S.lamp.PL2 = 0; S.lamp.PL3 = 0;
+  let v=0; clearInterval(blinkTimer);
+  blinkTimer = setInterval(()=>{ v^=1; S.lamp.PL1=v; draw(); }, prob.id===2?1000:500);
+  log('■ 비상정지 — 가공모터·컨베이어 정지, 녹색·황색 소등, 적색 점멸', 'e');
+  $('simBanner').innerHTML = `<div class="banner warn">비상정지(부가조건3): ${prob.cond.add3}</div>`;
+  setTimeout(()=>{ clearInterval(blinkTimer); S.lamp.PL1=0; draw(); }, 4000);
+}
+
+/* ===================== 결과 ===================== */
+let lastResult = null;
+function finish(score, correct, total, modeName){
+  lastResult = { score, correct, total, modeName };
+  setTimeout(()=>{
+    $('asm').classList.add('hide');
+    $('done').classList.remove('hide');
+    const grade = score>=100?'★★★':score>=80?'★★':score>=60?'★':'-';
+    $('doneBody').innerHTML =
+      `<div style="font-size:.9rem; color:var(--dim)">${prob.name} · ${modeName}</div>
+       <div class="score">${score}점</div>
+       <div style="color:var(--gold); font-size:1.2rem">${grade}</div>
+       <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 블록 정확</div>`;
+    if(rcReady()) $('btnSubmit').classList.remove('hide');
+  }, 1400);
+}
+function submitResult(){
+  if(!lastResult || !rcReady()) return;
+  try{
+    ResultCollector.config.tool = '자동화설비 실기 PLC제어작업 · ' + lastResult.modeName;
+    ResultCollector.open({
+      score: lastResult.score, correct: lastResult.correct, total: lastResult.total,
+      durationSec: Math.round((Date.now()-sessStart)/1000)
+    });
+  }catch(e){ alert('제출 위젯을 불러오지 못했습니다.'); }
+}
+
+renderHome();
+</script>
+</body>
+</html>
