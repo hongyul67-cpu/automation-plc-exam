@@ -86,12 +86,14 @@
     .ws .side{order:-1; top:0; z-index:5; max-height:36vh; overflow:auto;
       background:#12283e; border:1px solid var(--acc2); border-radius:12px; padding:6px}
   }
-  .iog{margin-bottom:7px}
-  .iog b{font-size:.78rem; color:var(--acc)}
-  .iog .nt{font-size:.7rem; color:var(--warn)}
-  .iog table{margin-top:3px}
-  .iog td{padding:2px 6px; font-size:.75rem}
-  .iog td:first-child{color:var(--ink); font-weight:700; width:52px}
+  /* I/O 표는 한 줄씩 쌓으면 세로로 하염없이 길어진다 → 폭에 맞춰 여러 열로 접는다 */
+  #ladIO{display:grid; grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:6px}
+  .iog{break-inside:avoid}
+  .iog b{font-size:.75rem; color:var(--acc); display:block}
+  .iog .nt{font-size:.66rem; color:var(--warn); display:block; line-height:1.3}
+  .iog table{margin-top:2px; width:100%}
+  .iog td{padding:1px 4px; font-size:.72rem; border-color:var(--line)}
+  .iog td:first-child{color:var(--ink); font-weight:700; width:44px}
   details.blk2 summary{cursor:pointer; font-size:.85rem; font-weight:700; outline:none}
   details.blk2 summary::-webkit-details-marker{display:none}
   details.blk2 summary::before{content:'▾ '; color:var(--acc)}
@@ -617,18 +619,18 @@ function contact(cx, cy, label, isB, color){
 function rungSVG(st, prev, condShown){
   const conds = condShown ? st.cond : ['?'];
   const col = condShown ? '#38bdf8' : '#f59e0b';
-  const railL = 20, railR = 680, y = 46, yh = 96;
-  const first = 80, gap = 96;
+  const y = 46, yh = 96, railL = 20, first = 80, gap = 96;
   const condXs = conds.map((_,i)=>first + i*gap);
   const bIn = first - 34, bOut = condXs[condXs.length-1] + 34;   // 자기유지 분기 구간
   const prevX = bOut + 62;                                        // 직전 스텝 접점
-  const coilX = 636;
+  /* 폭은 내용에 맞춰 정한다 — 조건이 1개인데 700px을 쓰면 접점과 코일 사이가 텅 빈다 */
+  const coilX = prevX + 92, railR = coilX + 40, W = railR + 20;
   const reset = ladIdx===0;                                       // A1은 마지막 스텝의 b접점으로 끊는다
   const prevLabel = reset ? `A${ladSteps.length}` : prev;
 
-  let s = `<svg viewBox="0 0 700 128" style="max-width:660px">
-    <line x1="${railL}" y1="14" x2="${railL}" y2="116" stroke="${WIRE}" stroke-width="2"/>
-    <line x1="${railR}" y1="14" x2="${railR}" y2="116" stroke="${WIRE}" stroke-width="2"/>
+  let s = `<svg viewBox="0 0 ${W} 118" style="width:100%; max-width:${W}px">
+    <line x1="${railL}" y1="14" x2="${railL}" y2="112" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${railR}" y1="14" x2="${railR}" y2="112" stroke="${WIRE}" stroke-width="2"/>
     <line x1="${railL}" y1="${y}" x2="${coilX-13}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
     <line x1="${coilX+13}" y1="${y}" x2="${railR}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
   condXs.forEach((cx,i)=>{ s += contact(cx, y, conds[i], false, col); });
@@ -641,8 +643,7 @@ function rungSVG(st, prev, condShown){
         <line x1="${bIn}" y1="${yh}" x2="${bOut}" y2="${yh}" stroke="${WIRE}" stroke-width="2"/>
         <line x1="${bOut}" y1="${yh}" x2="${bOut}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
   s += contact((bIn+bOut)/2, yh, st.id, false, '#38bdf8');
-  s += `<text x="${prevX+120}" y="${yh+4}" fill="#8fb6d6" font-size="12">← 자기유지는 전환조건만 감쌉니다</text></svg>`;
-  return s;
+  return s + `</svg>`;
 }
 /* 공정순서도 참고 패널 — 시험장에서 문제지로 주어지는 것이므로 푸는 내내 보여준다.
    지금 다루는 스텝이 순서도의 어느 줄인지 표시해 왔다갔다 하지 않게 한다. */
