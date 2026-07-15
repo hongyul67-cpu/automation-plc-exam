@@ -74,6 +74,29 @@
   .fl .ar{color:var(--line); margin-right:2px}
   @media(max-width:640px){ .ref{max-height:30vh; padding:10px} }
 
+  /* 3단계 작업대 — 참고 자료(순서도·I/O 할당표)를 옆에 띄워두고 푼다.
+     I/O 할당표는 시험지에 인쇄되어 주어지므로 외우게 할 이유가 없다. */
+  .ws{display:grid; grid-template-columns:1fr 320px; gap:12px; align-items:start}
+  /* 사이드가 화면보다 길면 sticky가 붙을 여백이 없어 그냥 흘러가 버린다 → 높이를 화면에 가둔다 */
+  .ws .side{position:sticky; top:8px; display:flex; flex-direction:column; gap:8px;
+    max-height:calc(100vh - 20px); overflow-y:auto}
+  .ws .side .card{margin:0; padding:10px}
+  @media(max-width:900px){
+    .ws{grid-template-columns:1fr}
+    .ws .side{order:-1; top:0; z-index:5; max-height:36vh; overflow:auto;
+      background:#12283e; border:1px solid var(--acc2); border-radius:12px; padding:6px}
+  }
+  .iog{margin-bottom:7px}
+  .iog b{font-size:.78rem; color:var(--acc)}
+  .iog .nt{font-size:.7rem; color:var(--warn)}
+  .iog table{margin-top:3px}
+  .iog td{padding:2px 6px; font-size:.75rem}
+  .iog td:first-child{color:var(--ink); font-weight:700; width:52px}
+  details.blk2 summary{cursor:pointer; font-size:.85rem; font-weight:700; outline:none}
+  details.blk2 summary::-webkit-details-marker{display:none}
+  details.blk2 summary::before{content:'▾ '; color:var(--acc)}
+  details.blk2:not([open]) summary::before{content:'▸ '}
+
   /* 시뮬레이터 */
   svg{width:100%; height:auto; display:block; background:#0a1622; border-radius:10px}
   .hud{display:flex; gap:8px; flex-wrap:wrap; font-size:.8rem; margin-top:8px}
@@ -168,24 +191,35 @@
       <button onclick="goHome()">← 처음으로</button>
     </div>
     <div id="ladBanner"></div>
-    <details class="card ref" open>
-      <summary>공정순서도 · 조건 (시험장에서 문제지로 주어지는 것)</summary>
-      <div class="flow" id="ladFlow"></div>
-      <div class="cond" id="ladCond"></div>
-    </details>
-    <div class="card">
-      <div class="cond" style="margin-bottom:10px">
-        선생님 방식 — <b>(전환조건 + A<sub>n</sub>) · A<sub>n-1</sub> → A<sub>n</sub></b> ·
-        자기유지는 전환조건만 감싸고, 직전 스텝을 직렬로 통과합니다(그래서 앞이 끊기면 연쇄로 정지).
+    <div class="ws">
+      <div class="card">
+        <div class="cond" style="margin-bottom:10px">
+          선생님 방식 — <b>(전환조건 + A<sub>n</sub>) · A<sub>n-1</sub> → A<sub>n</sub></b> ·
+          자기유지는 전환조건만 감싸고, 직전 스텝을 직렬로 통과합니다(그래서 앞이 끊기면 연쇄로 정지).
+        </div>
+        <div id="ladRung"></div>
+        <div style="margin-top:12px" id="ladAsk"></div>
+        <div class="bin" id="ladOpts" style="margin-top:8px"></div>
+        <div class="cond" id="ladWhy" style="margin-top:10px"></div>
       </div>
-      <div id="ladRung"></div>
-      <div style="margin-top:12px" id="ladAsk"></div>
-      <div class="bin" id="ladOpts" style="margin-top:8px"></div>
-      <div class="cond" id="ladWhy" style="margin-top:10px"></div>
-    </div>
-    <div class="card">
-      <b style="display:block; margin-bottom:6px">지금까지 짠 제어부</b>
-      <div id="ladDone" class="cond"></div>
+      <aside class="side">
+        <div class="card" style="border-color:var(--acc2)">
+          <div class="cond" style="margin:0 0 4px; color:var(--warn)">아래 둘은 시험지에 인쇄되어 나옵니다 — 외우지 말고 보면서 푸세요.</div>
+        </div>
+        <details class="card blk2" open>
+          <summary>📋 공정순서도</summary>
+          <div class="flow" id="ladFlow"></div>
+          <div class="cond" id="ladCond"></div>
+        </details>
+        <details class="card blk2" open>
+          <summary>🔌 I/O 할당표</summary>
+          <div id="ladIO"></div>
+        </details>
+        <details class="card blk2" open>
+          <summary>✅ 지금까지 짠 스텝</summary>
+          <div id="ladDone" class="cond"></div>
+        </details>
+      </aside>
     </div>
   </section>
 
@@ -564,6 +598,9 @@ function startLad(){
   $('ladTitle').textContent = `3단계 · ${prob.name} 스텝 래더`;
   $('ladBanner').innerHTML = '';
   $('ladDone').innerHTML = '아직 없습니다.';
+  $('ladIO').innerHTML = IO_GROUPS.map(g=>
+    `<div class="iog"><b>${g.g}</b>${g.note?` <span class="nt">${g.note}</span>`:''}
+      <table>${g.rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></div>`).join('');
   drawLad();
 }
 /* 래더 한 줄을 그린다.
