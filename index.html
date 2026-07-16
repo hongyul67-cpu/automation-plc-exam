@@ -817,7 +817,8 @@ const condTxt= c => isB(c) ? bare(c) + '̄' : c;              // S3 → S3̄
 const condName = c => (SIGNALS[bare(c)] || '') + (isB(c) ? ' 아님' : '');
 const condsTxt = a => a.map(condTxt).join(' · ');
 /* 연속동작 종료 조건이 문제마다 다르다 — 대개 소진까지지만 4번은 3사이클 */
-const contTxt = () => prob.contCycles ? `${prob.contCycles}사이클 연속 작동 후 종료` : '모두 소진될 때까지';
+const contTxt = () => prob.contCycles ? `${prob.contCycles}사이클 연속 작동 후 종료`
+  : (prob.contUntil || '모두 소진될 때까지');
 /* 8번만 PB3를 2회 눌러야 시작한다. 적재 조건에 재질 제한이 붙는 문제도 있다 */
 const contStartTxt = () => prob.contStart || 'PB3';
 const workTxt = () => `${prob.minWork}개 이상` + (prob.minNote ? `(${prob.minNote})` : '');
@@ -1085,7 +1086,7 @@ function loadWork(){
   S.works = []; S.boxes={eject:0, keep:0}; S.onTable=null; S.onBelt=null;
   const n = Math.max(prob.minWork, 3);
   for(let i=0;i<n;i++) S.works.push({ mat: Math.random()<.5 ? '금속' : '비금속' });
-  S.err=null; S.cycles=0; S.ok=0;
+  S.err=null; S.cycles=0; S.ok=0; S.metalStored=0;
   draw();
   log(`매거진에 공작물 ${n}개 적재 (${S.works.map(w=>w.mat[0]).join('·')})`);
 }
@@ -1315,6 +1316,7 @@ async function runCycle(mode){
       await moveBelt(GEO.sense.x, 900);
       if(abortRun) break;
       mat = S.onBelt.mat;
+      if(mat==='금속') S.metalStored++;
       /* S4는 재질 상관없이 전부 잡고, S3(유도형)이 금속만 잡는다 */
       log(`재질 판별 — ${mat} (S4 ON${mat==='금속' ? ' · S3 ON → 금속' : ' · S3 OFF → 비금속'})`, 'g');
       const lm = lampByMaterial(mat); if(lm) setYellow(lm);
@@ -1339,10 +1341,17 @@ async function runCycle(mode){
     setYellow('off');
     S.cycles++; S.ok++;
     sGood();
-    /* 4번은 소진까지가 아니라 3사이클 돌고 종료한다 */
+    /* 종료 조건이 문제마다 다르다: 소진까지 / N사이클 / 금속 N개 저장까지 */
     if(mode==='연속' && prob.contCycles && S.cycles >= prob.contCycles){
       log(`${prob.contCycles}사이클 완료 — 공정을 종료합니다.`, 'g');
       break;
+    }
+    if(mode==='연속' && prob.contUntil){
+      const m = prob.contUntil.match(/금속 공작물 (\d+)개/);
+      if(m && S.metalStored >= +m[1]){
+        log(`${prob.contUntil} — 공정을 종료합니다.`, 'g');
+        break;
+      }
     }
     await sleep(300);
   } while(mode==='연속' && S.works.length && !abortRun);

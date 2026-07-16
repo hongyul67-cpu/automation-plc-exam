@@ -254,6 +254,20 @@ window.STEPS = {
     { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
     { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
     { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
+  ],
+  10: [
+    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:[], timer:{name:'T2', pt:'T#1S'}, flow:['delay1'] },
+    { id:'A3',  cond:['T2.Q'],     drive:['SOL2 공급실린더 후진'], flow:['sup_bwd'] },
+    { id:'A4',  cond:['LS1'],      drive:['M1 가공모터 회전','SOL3 가공실린더 하강'], flow:['drill_run','mach_down'] },
+    { id:'A5',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#3S'}, flow:['delay3'] },
+    { id:'A6',  cond:['T3.Q'],     drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A7',  cond:['LS3'],      drive:['M1 정지','M2 컨베이어 구동','SOL4 송출실린더 전진'], flow:['drill_stop','conv_run','push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:[], flow:[] },
+    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ]
 };
 
@@ -346,6 +360,15 @@ window.DISP = {
     { n:'적색램프', lamp:1, on:[] },
     { n:'황색램프', lamp:1, on:[[4,6]] },
     { n:'녹색램프', lamp:1, on:[[2,3]] }
+  ]},
+  10: { rows:[
+    { n:'공급실린더', e:[[3,1],[6,0]], note:{at:5, t:'2초'} },
+    { n:'가공실린더', e:[[2,1],[4,0]] },
+    { n:'송출실린더', e:[[4,1],[7,0]] },
+    { n:'배출실린더', e:[[1,1],[8,0]] },
+    { n:'적색램프', lamp:1, on:[] },
+    { n:'황색램프', lamp:1, on:[[5,6]] },
+    { n:'녹색램프', lamp:1, on:[[3,7]] }
   ]}
 };
 
@@ -452,6 +475,18 @@ window.BSTEPS = {
     { id:'B6', cond:['LS3'],       drive:['SOL4 OFF → 송출실린더 후진','PL2 소등'] },
     { id:'B7', cond:['LS5'],       drive:['SOL5 배출실린더 전진'] },
     { id:'B8', cond:['LS8'],       drive:['SOL5 OFF → 배출실린더 후진'] },
+    { id:'B9', cond:['LS7'],       drive:[] }
+  ],
+  /* 노션 확인: YL = (B5·B6̄) + 금속 + 비금속·_T1S  /  SOL5 = (B1·B8̄) + (A10·A11̄) + (D2·D3̄) */
+  10: [
+    { id:'B1', cond:['PB1'],       drive:['SOL5 배출실린더 전진'] },
+    { id:'B2', cond:['LS8'],       drive:['SOL3 가공실린더 하강'] },
+    { id:'B3', cond:['LS4'],       drive:['SOL1 공급실린더 전진','PL3 녹색램프 점등'] },
+    { id:'B4', cond:['LS2'],       drive:['SOL3 OFF → 가공실린더 상승','SOL4 송출실린더 전진'] },
+    { id:'B5', cond:['LS3','LS6'], drive:['PL2 황색램프 점등'], timer:{name:'T1', pt:'T#2S'} },
+    { id:'B6', cond:['T1.Q'],      drive:['SOL2 공급실린더 후진','PL2 소등'] },
+    { id:'B7', cond:['LS1'],       drive:['SOL4 OFF → 송출실린더 후진','PL3 소등'] },
+    { id:'B8', cond:['LS5'],       drive:['SOL5 OFF → 배출실린더 후진'] },
     { id:'B9', cond:['LS7'],       drive:[] }
   ]
 };
@@ -610,6 +645,24 @@ window.PROBLEMS = [
       add2: '컨베이어 구동 시 황색램프 점멸(0.5초 ON/0.5초 OFF).',
       add3: '"가공모터 구동 및 가공실린더 하강 시" 비상정지를 누르면 현 상태에서 일시정지(가공모터 정지, 가공실린더가 하강상태이면 하강 유지). (그때만 작동) 해제하면 남은 동작을 이어서 동작.',
       estopRelease: '남은 동작을 이어서 동작합니다.'
+    }
+  },
+  {
+    id: 10,
+    name: '공개문제 10',
+    seq: ['sup_fwd', 'delay1', 'sup_bwd', 'drill_run', 'mach_down', 'delay3',
+          'mach_up', 'drill_stop', 'conv_run', 'push_fwd', 'push_bwd'],
+    repeat: null,
+    ejectMaterial: '금속',
+    minWork: 3,
+    minNote: '금속 2개 이상 포함',
+    /* 사이클 수도 소진도 아닌 새 종료조건 — 금속을 2개 저장하면 끝난다 */
+    contUntil: '금속 공작물 2개가 저장될 때까지',
+    cond: {
+      add1: '연속동작 중 공작물 재질을 판별하기 전 PB3를 누르면 재질에 관계없이 배출실린더로 배출박스에 저장. (해당 사이클에만 적용)',
+      add2: '공작물의 재질을 판별하여 금속이면 황색램프 점등, 비금속이면 황색램프 점멸(0.5초 ON/0.5초 OFF). (해당 사이클 종료 시 소등)',
+      add3: '비상정지를 누르면 현재 상태로 정지, 녹색·황색램프 소등, 적색램프 점멸(0.5초 ON/0.5초 OFF). 해제하면 적색램프 소등하고 남은 동작을 이어서 동작.',
+      estopRelease: '적색램프는 소등하고 남은 동작을 이어서 동작합니다.'
     }
   }
 ];
