@@ -56,7 +56,9 @@ window.BLOCKS = {
   /* 한 순서도에 같은 지연이 두 번 나오는 문제가 있다(4번: 가공 전·송출 후).
      키는 달라야 하지만 학생에게는 똑같이 보이므로 채점은 표시명으로 한다. */
   delay1b:   { t: '1초 지연',          act: 'delay', sec: 1 },
-  delay2b:   { t: '2초 지연',          act: 'delay', sec: 2 }
+  delay2b:   { t: '2초 지연',          act: 'delay', sec: 2 },
+  delay3:    { t: '3초 지연',          act: 'delay', sec: 3 },
+  delay3b:   { t: '3초 지연',          act: 'delay', sec: 3 }
 };
 
 /* 재질 판별 이후는 모든 문제 공통 구조(분기 방향만 다름) */
@@ -206,6 +208,21 @@ window.STEPS = {
     { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
     { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
     { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
+  ],
+  7: [
+    /* 7번은 가공모터가 맨 먼저 돈다 — 공급실린더 전진과 사이에 조건이 없어 한 스텝이 둘을 맡는다 */
+    { id:'A1',  cond:['PB2','S1'], drive:['M1 가공모터 회전','SOL1 공급실린더 전진'], flow:['drill_run','sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:[], timer:{name:'T2', pt:'T#1S'}, flow:['delay1'] },
+    { id:'A3',  cond:['T2.Q'],     drive:['SOL3 가공실린더 하강'], flow:['mach_down'] },
+    { id:'A4',  cond:['LS4'],      drive:[], timer:{name:'T3', pt:'T#3S'}, flow:['delay3'] },
+    { id:'A5',  cond:['T3.Q'],     drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A6',  cond:['LS3'],      drive:['M1 정지','SOL2 공급실린더 후진'], flow:['drill_stop','sup_bwd'] },
+    { id:'A7',  cond:['LS1'],      drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
+    { id:'A10', cond:['S3'],       drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ]
 };
 
@@ -271,6 +288,15 @@ window.DISP = {
     { n:'적색램프', lamp:1, on:[] },
     { n:'황색램프', lamp:1, on:[[2,3]] },
     { n:'녹색램프', lamp:1, on:[[5,8]] }
+  ]},
+  7: { rows:[
+    { n:'공급실린더', e:[[1,1],[8,0]] },
+    { n:'가공실린더', e:[[3,1],[7,0]], note:{at:4, t:'2초'} },
+    { n:'송출실린더', e:[[2,1],[6,0]] },
+    { n:'배출실린더', e:[[2,1],[5,0]] },
+    { n:'적색램프', lamp:1, on:[] },
+    { n:'황색램프', lamp:1, on:[[2,6]] },
+    { n:'녹색램프', lamp:1, on:[[4,5]] }
   ]}
 };
 
@@ -342,6 +368,18 @@ window.BSTEPS = {
     { id:'B6', cond:['LS4'],       drive:['SOL4 OFF → 송출실린더 후진'] },
     { id:'B7', cond:['LS5'],       drive:['SOL1 공급실린더 전진','SOL3 OFF → 가공실린더 상승'] },
     { id:'B8', cond:['LS2','LS3'], drive:['SOL2 공급실린더 후진','PL3 소등'] },
+    { id:'B9', cond:['LS1'],       drive:[] }
+  ],
+  /* 노션 확인: YL = (B2·B6̄) + 부가1  /  GL = (B4·B5̄) + CM·_T1S */
+  7: [
+    { id:'B1', cond:['PB1'],       drive:['SOL1 공급실린더 전진'] },
+    { id:'B2', cond:['LS2'],       drive:['SOL4 송출실린더 전진','SOL5 배출실린더 전진','PL2 황색램프 점등'] },
+    { id:'B3', cond:['LS6','LS8'], drive:['SOL3 가공실린더 하강'] },
+    { id:'B4', cond:['LS4'],       drive:['PL3 녹색램프 점등'], timer:{name:'T1', pt:'T#2S'} },
+    { id:'B5', cond:['T1.Q'],      drive:['SOL5 OFF → 배출실린더 후진','PL3 소등'] },
+    { id:'B6', cond:['LS7'],       drive:['SOL4 OFF → 송출실린더 후진','PL2 소등'] },
+    { id:'B7', cond:['LS5'],       drive:['SOL3 OFF → 가공실린더 상승'] },
+    { id:'B8', cond:['LS3'],       drive:['SOL2 공급실린더 후진'] },
     { id:'B9', cond:['LS1'],       drive:[] }
   ]
 };
@@ -446,6 +484,23 @@ window.PROBLEMS = [
     cond: {
       add1: '공작물 재질을 판별하여 금속이면 녹색램프 점멸(1초 ON/1초 OFF), 비금속이면 녹색램프 점등. (해당 사이클 종료 시 소등)',
       add2: '연속동작 중 저장박스에 저장된 비금속이 2개 이상이면 황색램프 점멸(1초 ON/1초 OFF). 연속동작이 종료되면 황색램프 소등.',
+      add3: '비상정지를 누르면 현재 상태로 정지, 녹색·황색램프 소등, 적색램프 점멸(1초 ON/1초 OFF). 해제하면 시스템이 초기화합니다.',
+      estopRelease: '시스템이 초기화합니다.'
+    }
+  },
+  {
+    id: 7,
+    name: '공개문제 7',
+    /* 7번은 가공모터 회전이 공급실린더 전진보다 먼저 나온다 */
+    seq: ['drill_run', 'sup_fwd', 'delay1', 'mach_down', 'delay3', 'mach_up',
+          'drill_stop', 'sup_bwd', 'push_fwd', 'push_bwd', 'conv_run'],
+    repeat: null,
+    ejectMaterial: '금속',
+    minWork: 3,
+    minNote: '금속 2개 이상 포함',
+    cond: {
+      add1: '연속동작 중 배출박스에 저장된 금속이 2개 이상이면 황색램프 점등. (연속동작이 종료되면 소등)',
+      add2: '컨베이어 구동 시 녹색램프 점멸(0.5초 ON/0.5초 OFF).',
       add3: '비상정지를 누르면 현재 상태로 정지, 녹색·황색램프 소등, 적색램프 점멸(1초 ON/1초 OFF). 해제하면 시스템이 초기화합니다.',
       estopRelease: '시스템이 초기화합니다.'
     }
