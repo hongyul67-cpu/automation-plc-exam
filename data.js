@@ -328,6 +328,20 @@ window.STEPS = {
     { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
     { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
   ],
+  16: [
+    { id:'A1',  cond:['PB2','S1'], drive:['SOL1 공급실린더 전진'], flow:['sup_fwd'] },
+    { id:'A2',  cond:['LS2'],      drive:[], timer:{name:'T2', pt:'T#2S'}, flow:['delay2'] },
+    { id:'A3',  cond:['T2.Q'],     drive:['SOL2 공급실린더 후진'], flow:['sup_bwd'] },
+    { id:'A4',  cond:['LS1'],      drive:['M1 가공모터 회전','SOL3 가공실린더 하강'], flow:['drill_run','mach_down'] },
+    { id:'A5',  cond:['LS4'],      drive:['SOL3 OFF → 가공실린더 상승'], flow:['mach_up'] },
+    { id:'A6',  cond:['LS3'],      drive:['M1 정지'], timer:{name:'T3', pt:'T#2S'}, flow:['drill_stop','delay2b'] },
+    { id:'A7',  cond:['T3.Q'],     drive:['SOL4 송출실린더 전진'], flow:['push_fwd'] },
+    { id:'A8',  cond:['LS6'],      drive:['SOL4 OFF → 송출실린더 후진'], flow:['push_bwd'] },
+    { id:'A9',  cond:['LS5'],      drive:['M2 컨베이어 구동'], flow:['conv_run'] },
+    { id:'A10', cond:['S4','!S3'], drive:['SOL5 배출실린더 전진'], flow:[] },
+    { id:'A11', cond:['LS8'],      drive:['SOL5 OFF → 배출실린더 후진'], flow:[] },
+    { id:'A12', cond:['LS7'],      drive:['M2 정지'], flow:[] }
+  ],
   /* 13번만 A11까지다 — 2초 지연이 부가조건2로 빠져서 기본 순서도에 지연 스텝이 없다.
      그래서 컨베이어 구동이 A8이고, 노션의 "비금속 = (S4·S3̄)·A8"과 맞는다. */
   13: [
@@ -488,6 +502,15 @@ window.DISP = {
     { n:'적색램프', lamp:1, on:[] },
     { n:'황색램프', lamp:1, on:[[7,8]] },
     { n:'녹색램프', lamp:1, on:[[3,9]] }
+  ]},
+  16: { rows:[
+    { n:'공급실린더', e:[[1,1],[5,0]], note:{at:4, t:'3초'} },
+    { n:'가공실린더', e:[[2,1],[7,0]] },
+    { n:'송출실린더', e:[[3,1],[6,0]] },
+    { n:'배출실린더', e:[[1,1],[8,0]] },
+    { n:'적색램프', lamp:1, on:[] },
+    { n:'황색램프', lamp:1, on:[[4,5]] },
+    { n:'녹색램프', lamp:1, on:[[2,8]] }
   ]}
 };
 
@@ -666,6 +689,18 @@ window.BSTEPS = {
     { id:'B7', cond:['LS3'],       drive:['SOL5 배출실린더 전진','PL2 황색램프 점등'], timer:{name:'T1', pt:'T#2S'} },
     { id:'B8', cond:['T1.Q'],      drive:['SOL5 OFF → 배출실린더 후진','PL2 소등'] },
     { id:'B9', cond:['LS7'],       drive:['PL3 소등'] }
+  ],
+  /* 노션 확인: YL = (B4·B5̄) + 금속·_T1S + 비금속. B1이 공급·배출을 동시 전진 */
+  16: [
+    { id:'B1', cond:['PB1'],       drive:['SOL1 공급실린더 전진','SOL5 배출실린더 전진'] },
+    { id:'B2', cond:['LS2','LS8'], drive:['SOL3 가공실린더 하강','PL3 녹색램프 점등'] },
+    { id:'B3', cond:['LS4'],       drive:['SOL4 송출실린더 전진'] },
+    { id:'B4', cond:['LS6'],       drive:['PL2 황색램프 점등'], timer:{name:'T1', pt:'T#3S'} },
+    { id:'B5', cond:['T1.Q'],      drive:['SOL2 공급실린더 후진','PL2 소등'] },
+    { id:'B6', cond:['LS1'],       drive:['SOL4 OFF → 송출실린더 후진'] },
+    { id:'B7', cond:['LS5'],       drive:['SOL3 OFF → 가공실린더 상승'] },
+    { id:'B8', cond:['LS3'],       drive:['SOL5 OFF → 배출실린더 후진','PL3 소등'] },
+    { id:'B9', cond:['LS7'],       drive:[] }
   ]
 };
 
@@ -924,6 +959,22 @@ window.PROBLEMS = [
     cond: {
       add1: '재질을 판별하여 금속이면 황색램프 점멸(0.5초 ON/0.5초 OFF), 비금속이면 황색램프 점등. (해당 사이클 종료 후 소등)',
       add2: '연속동작 중 한 사이클이 종료되고 2초 후 다음 사이클이 동작. (매거진에 공작물이 없으면 종료) 판별 전 PB3를 누르면 녹색램프 점등하며 재질에 상관없이 배출박스에 저장. (저장 후 소등, 해당 사이클에만 적용)',
+      add3: '비상정지를 누르면 현재 상태로 정지, 녹색·황색램프 소등, 적색램프 점멸(0.5초 ON/0.5초 OFF). 해제하면 시스템이 초기화합니다.',
+      estopRelease: '시스템이 초기화합니다.'
+    }
+  },
+  {
+    id: 16,
+    name: '공개문제 16',
+    seq: ['sup_fwd', 'delay2', 'sup_bwd', 'drill_run', 'mach_down', 'mach_up',
+          'drill_stop', 'delay2b', 'push_fwd', 'push_bwd', 'conv_run'],
+    repeat: null,
+    ejectMaterial: '비금속',
+    minWork: 3,
+    contCycles: 3,
+    cond: {
+      add1: '컨베이어 위에 공작물이 있을 때만 녹색램프 점등. 금속이면 황색램프 점멸(0.5초 ON/0.5초 OFF), 비금속이면 황색램프 점등. (해당 사이클 종료 시 소등)',
+      add2: '연속동작 중 PB3를 한 번 더 누르면 재질에 관계없이 저장박스에 저장. (해당 사이클에만 적용)',
       add3: '비상정지를 누르면 현재 상태로 정지, 녹색·황색램프 소등, 적색램프 점멸(0.5초 ON/0.5초 OFF). 해제하면 시스템이 초기화합니다.',
       estopRelease: '시스템이 초기화합니다.'
     }
