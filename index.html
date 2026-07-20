@@ -216,6 +216,10 @@
     <div id="tstBanner"></div>
     <div class="ws">
       <div class="card">
+        <div class="cond" style="margin-bottom:10px">
+          규칙 — <b>(전환조건 + B<sub>n</sub>) · B<sub>n-1</sub> → B<sub>n</sub></b> ·
+          접점에 <b>사선(╱)</b>이 있으면 b접점(평소 닫힘) — B1은 마지막 스텝의 b접점으로 끊어 한 바퀴 돌면 처음으로 돌아옵니다.
+        </div>
         <div id="tstRung"></div>
         <div style="margin-top:12px" id="tstAsk"></div>
         <div class="bin" id="tstOpts" style="margin-top:8px"></div>
@@ -708,21 +712,45 @@ const startMode = startStage;   // 이전 버튼 호환
 
 /* ===================== 1단계 · 설비/IO 퀴즈 ===================== */
 let ioQs = [], ioIdx = 0, ioHit = 0;
+/* 입력은 "~가 켜졌다는 것은?"(무슨 일이 일어났나), 출력은 "~에 출력을 주면?"(무엇이 움직이나)으로
+   나눠 묻는다 — LS2(전진 감지)와 SOL1(전진 구동)의 답이 똑같아지는 혼동을 없애기 위해. */
+const IO_MEAN_IN = [
+  ['LS1','공급실린더가 후진을 끝냈다'], ['LS2','공급실린더가 전진을 끝냈다'],
+  ['LS3','가공실린더가 위에 있다(상승 완료)'], ['LS4','가공실린더가 아래에 있다(하강 완료)'],
+  ['LS5','송출실린더가 후진을 끝냈다'], ['LS6','송출실린더가 전진을 끝냈다'],
+  ['LS7','배출실린더가 후진을 끝냈다'], ['LS8','배출실린더가 전진을 끝냈다'],
+  ['S1','매거진에 공작물이 있다'], ['S2','컨베이어 위 공작물을 감지했다(이송 감지)'],
+  ['S3','금속 공작물이다(유도형 — 금속만 반응)'], ['S4','공작물이 왔다(정전용량형 — 재질 무관)'],
+  ['SW2','PB2를 눌렀다 — 단속동작 시작'], ['SW3','PB3를 눌렀다 — 연속동작 시작'],
+  ['SW4','비상정지를 눌렀다']
+];
+const IO_MEAN_OUT = [
+  ['SOL1','공급실린더가 전진한다'], ['SOL2','공급실린더가 후진한다'],
+  ['SOL3','가공실린더가 하강한다(끊으면 스프링으로 상승)'],
+  ['SOL4','송출실린더가 전진한다(끊으면 후진)'], ['SOL5','배출실린더가 전진한다(끊으면 후진)'],
+  ['M1','드릴(가공모터)이 돈다'], ['M2','컨베이어가 돈다'],
+  ['PL1','적색 램프가 켜진다'], ['PL2','황색 램프가 켜진다'], ['PL3','녹색 램프가 켜진다']
+];
 function buildIOQs(){
   const qs = [];
-  IO_TABLE.in.concat(IO_TABLE.out).forEach(r=>{
-    qs.push({ q:`<b>${r.sym}</b> 은(는) 무엇입니까?`, a:r.fn,
-      pool: IO_TABLE.in.concat(IO_TABLE.out).map(x=>x.fn), why:`${r.sym} = ${r.fn}` });
+  /* 입력 4문항 + 출력 4문항을 무작위로 뽑되, 오답은 같은 종류(입력↔입력)에서만 */
+  shuffle(IO_MEAN_IN).slice(0,4).forEach(([sym,mean])=>{
+    qs.push({ q:`입력 <b>${sym}</b>이(가) 켜졌다는 것은 무슨 뜻입니까?`, a:mean,
+      pool: IO_MEAN_IN.map(x=>x[1]), why:`${sym} = ${mean}` });
   });
-  qs.push({ q:'공급실린더(CYL1)만 <b>솔레노이드가 2개</b>(SOL1 전진 / SOL2 후진)인 이유는?',
-    a:'양솔이라 신호가 끊겨도 그 자리를 유지하기 때문',
-    pool:['양솔이라 신호가 끊겨도 그 자리를 유지하기 때문','편솔이라 스프링으로 자동 복귀하기 때문','힘이 가장 세야 하기 때문','리밋스위치가 2개이기 때문'],
-    why:'CYL1은 양솔(SOL1·SOL2). 전진·후진을 각각 명령해야 하고, 신호가 없으면 그 자리에 멈춥니다. 나머지 CYL2~4는 편솔이라 출력을 끊으면 스프링으로 복귀합니다.' });
+  shuffle(IO_MEAN_OUT).slice(0,4).forEach(([sym,mean])=>{
+    qs.push({ q:`출력 <b>${sym}</b>에 출력을 주면 어떻게 됩니까?`, a:mean,
+      pool: IO_MEAN_OUT.map(x=>x[1]), why:`${sym} = ${mean}` });
+  });
+  qs.push({ q:'공급실린더(CYL1)는 SOL1(전진)·SOL2(후진) 두 개를 쓰는 <b>양솔</b>입니다. 양솔의 특징은?',
+    a:'신호가 없으면 그 자리에 멈춰 있다 (전진·후진을 각각 명령)',
+    pool:['신호가 없으면 그 자리에 멈춰 있다 (전진·후진을 각각 명령)','출력을 끊으면 스프링으로 되돌아온다 (그건 편솔)','힘이 두 배가 된다','리밋스위치가 필요 없다'],
+    why:'양솔은 전진·후진에 각각 솔레노이드가 있어 신호가 끊겨도 그 자리를 유지합니다. 편솔(CYL2~4)은 출력을 끊으면 스프링이 되돌립니다.' });
   qs.push({ q:'가공실린더(CYL2)를 <b>상승</b>시키려면 래더에서 어떻게 해야 합니까?',
     a:'SOL3 출력을 끊는다 (편솔 → 스프링 복귀)',
     pool:['SOL3 출력을 끊는다 (편솔 → 스프링 복귀)','SOL4 출력을 낸다','SOL3 출력을 계속 낸다','LS3 접점을 강제로 켠다'],
     why:'CYL2·3·4는 편솔입니다. 상승·후진은 별도 출력이 아니라 해당 SOL 출력을 끊으면 스프링이 되돌립니다. 그래서 구동부는 보통 (스텝n · 스텝m̄) → SOL 형태가 됩니다.' });
-  qs.push({ q:'공작물이 <b>금속</b>인 것을 알려주는 센서는?', a:'S3',
+  qs.push({ q:'공작물이 <b>금속</b>인 것을 알려주는 센서는? <span class="cond">(공개문제 표의 이름이 아니라 센서의 실제 동작 기준)</span>', a:'S3',
     pool:['S3','S4','S2','S1'],
     why:'S3이 유도형이라 <b>금속만</b> 잡습니다. S4는 정전용량형이라 재질과 무관하게 <b>전부</b> 잡습니다. (공개문제 표에는 S3 "비금속 감지"·S4 "금속 감지"로 적혀 있지만 실제 동작은 이렇습니다.)' });
   qs.push({ q:'공작물이 <b>비금속</b>인 것은 어떻게 판별합니까?', a:'S4 · S3̄ (전부 잡히는데 금속은 아님)',
@@ -843,7 +871,7 @@ function drawTst(){
     const ans = driveText(st);
     const all = [];
     Object.values(BSTEPS).forEach(arr=>arr.forEach(s=>all.push(driveText(s))));
-    const wrongs = shuffle(Array.from(new Set(all)).filter(x=>x!==ans && x!=='없음')).slice(0,3);
+    const wrongs = pickDriveWrongs(all, ans, 3);
     $('tstOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
       `<button class="blk" onclick="ansTst(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
   }
@@ -879,6 +907,21 @@ function driveText(s){
   const parts = s.drive.slice();
   if(s.timer) parts.push(`타이머 ${s.timer.name}(${s.timer.pt}) 기동`);
   return parts.length ? parts.join(' + ') : '없음';
+}
+/* 구동부 보기의 '뜻' 키 — 항목 순서 뒤집힘·구동/회전 표기차를 같은 것으로 본다.
+   같은 뜻의 보기가 정답과 함께 나오면 학생이 고를 수 없으므로 오답 후보에서 제외. */
+const drvKey = s => s.split(' + ').map(x=>x.trim().replace('구동','회전')).sort().join('|');
+function pickDriveWrongs(pool, ans, n){
+  const seen = new Set([drvKey(ans)]);
+  const out = [];
+  for(const o of shuffle(Array.from(new Set(pool)))){
+    if(o === '없음') continue;
+    const k = drvKey(o);
+    if(seen.has(k)) continue;
+    seen.add(k); out.push(o);
+    if(out.length === n) break;
+  }
+  return out;
 }
 function startLad(){
   ladSteps = STEPS[prob.id]; ladIdx = 0; ladHit = 0; ladTot = 0; ladPhase = 'cond';
@@ -989,7 +1032,7 @@ function drawLad(){
     const ans = driveText(st);
     const allDrives = [];
     Object.values(STEPS).forEach(arr=>arr.forEach(s=>allDrives.push(driveText(s))));
-    const wrongs = shuffle(Array.from(new Set(allDrives)).filter(x=>x!==ans)).slice(0,3);
+    const wrongs = pickDriveWrongs(allDrives, ans, 3);
     $('ladOpts').innerHTML = shuffle([ans].concat(wrongs)).map(o=>
       `<button class="blk" onclick="ansLad(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
   }
