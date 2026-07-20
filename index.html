@@ -113,6 +113,10 @@
   .origcap{font-size:.72rem; color:var(--dim); margin:2px 0 8px}
   .mv{padding:2px 7px; font-size:.8rem; line-height:1; border-radius:5px}
   .mv:disabled{opacity:.3}
+  .learnref{max-height:52vh; overflow-y:auto}
+  .learnref .lrpage{padding:8px 0; border-top:1px dashed var(--line); font-size:.82rem}
+  .learnref .lrpage:first-child{border-top:none}
+  .learnref svg{max-width:100%}
 
   /* 시뮬레이터 */
   svg{width:100%; height:auto; display:block; background:#0a1622; border-radius:10px}
@@ -200,6 +204,7 @@
       <div class="cond" style="margin-bottom:8px">시험지에 인쇄되어 나옵니다 — 외울 필요 없습니다. 주소(X·Y)는 <b>수험자가 직접 배정</b>하는 항목이라 공개문제에도 비어 있습니다.</div>
       <div id="ioWrap"></div>
     </div>
+    <div id="ioLearn"></div>
   </section>
 
   <!-- ============ 테스트동작 · 변위단계선도 → B스텝 ============ -->
@@ -399,6 +404,20 @@ function condFullHTML(p){
 function condPanel(p){
   return `<details class="card blk2"><summary>📝 단속·연속·부가조건</summary>` +
     `<div class="cond">${condFullHTML(p)}</div></details>`;
+}
+/* 풀이 중 막히면 옆에서 배우기 내용을 다시 본다 (잠그지 않고 참고용).
+   buildLearn이 lad/tst 상태를 잠깐 건드리므로 스냅샷 후 복원한다. */
+function learnRefPanel(key){
+  const save = [ladSteps, ladIdx, tstSteps, tstIdx, learnKey, learnPages, learnIdx];
+  let pages;
+  try{ pages = buildLearn(key); }
+  catch(e){ pages = ['<div>배우기 내용을 불러오지 못했습니다.</div>']; }
+  [ladSteps, ladIdx, tstSteps, tstIdx, learnKey, learnPages, learnIdx] = save;
+  return `<details class="card blk2"><summary>📖 배우기 다시보기</summary>` +
+    `<div class="cond" style="margin:2px 0 6px; color:var(--acc)">막히면 여기서 개념·정답을 다시 봅니다.</div>` +
+    `<div class="learnref">` +
+    pages.map(p=>`<div class="lrpage">${p}</div>`).join('') +
+    `</div></details>`;
 }
 let prob = PROBLEMS[0];
 let userSeq = null;          // 조립 모드에서 확정한 순서 (없으면 정답 순서로 시운전)
@@ -659,9 +678,8 @@ function renderHome(){
       <div class="row">
         ${s.noLearn?'':`<button class="${learned?'':'btn-main'}" onclick="startLearn('${s.key}')">📖 배우기${learned?' ✓':''}</button>`}
         ${s.noTest?`<button class="btn-main" onclick="startStage('${s.key}')">▶ 시운전 해보기</button>`
-          :`<button onclick="tryTest('${s.key}',${learned})" ${learned?'':'style="opacity:.5"'}>🎯 테스트${learned?'':' 🔒'}</button>`}
-      </div>
-      ${(!s.noLearn && !learned) ? `<div class="cond" style="margin-top:4px; color:var(--warn)">먼저 📖 배우기를 끝까지 넘겨야 테스트가 열립니다.</div>`:''}</div>`;
+                  :`<button onclick="startStage('${s.key}')">🎯 테스트</button>`}
+      </div></div>`;
   }).join('');
   /* 주소는 수험자가 배정하는 항목이라 '?'로 채운 열은 아무 정보가 없다 → 기기별 묶음으로 보여준다 */
   $('ioWrap').innerHTML = ioGroupsHTML();
@@ -675,15 +693,6 @@ function goHome(){
   ['asm','sim','done','io','lad','add','learn','tst'].forEach(s=>$(s).classList.add('hide'));
   $('home').classList.remove('hide');
   stopSim(); renderHome();
-}
-/* 배우기를 끝내야 테스트가 열린다 — 모르는 채로 시험부터 보지 않도록 */
-function tryTest(k, learned){
-  if(learned){ startStage(k); return; }
-  sBad();
-  const def = STAGE_DEFS.find(s=>s.key===k);
-  if(confirm(`${def.n}단계는 아직 배우기를 안 끝냈습니다.\n먼저 배우기를 보시겠어요? (정답을 다 보여줍니다)`)){
-    startLearn(k);
-  }
 }
 function startStage(k){
   $('home').classList.add('hide');
@@ -724,7 +733,8 @@ function buildIOQs(){
     why:'S4가 재질과 무관하게 전부 잡으니 카운터(CTU)의 입력으로 씁니다. S3으로 세면 금속만 세집니다.' });
   return shuffle(qs).slice(0, 12);
 }
-function startIO(){ ioQs = buildIOQs(); ioIdx = 0; ioHit = 0; $('ioBanner').innerHTML=''; drawIO(); }
+function startIO(){ ioQs = buildIOQs(); ioIdx = 0; ioHit = 0; $('ioBanner').innerHTML='';
+  $('ioLearn').innerHTML = learnRefPanel('io'); drawIO(); }
 function drawIO(){
   if(ioIdx >= ioQs.length){
     const sc = Math.round(ioHit/ioQs.length*100);
@@ -799,7 +809,7 @@ function startTst(){
   $('tstBanner').innerHTML = `<div class="banner warn">테스트동작이 되지 않는 작품은 <b>실격</b>입니다. 시험장에서 가장 먼저 만드세요.</div>`;
   $('tstDone').innerHTML = '아직 없습니다.';
   $('tstIO').innerHTML = ioGroupsHTML();
-  $('tstOrig').innerHTML = origPanel(prob.id, ['disp']) + condPanel(prob);
+  $('tstOrig').innerHTML = origPanel(prob.id, ['disp']) + condPanel(prob) + learnRefPanel('tst');
   drawTst();
 }
 function drawTst(){
@@ -876,7 +886,7 @@ function startLad(){
   $('ladBanner').innerHTML = '';
   $('ladDone').innerHTML = '아직 없습니다.';
   $('ladIO').innerHTML = ioGroupsHTML();
-  $('ladOrig').innerHTML = origPanel(prob.id, ['flow','cond']) + condPanel(prob);
+  $('ladOrig').innerHTML = origPanel(prob.id, ['flow','cond']) + condPanel(prob) + learnRefPanel('lad');
   drawLad();
 }
 /* 래더 한 줄을 그린다.
@@ -1038,7 +1048,7 @@ function startAdd(){
   addQs = buildAddQs(); addIdx = 0; addHit = 0;
   $('addTitle').textContent = `5단계 · ${prob.name} 부가조건`;
   $('addBanner').innerHTML='';
-  $('addOrig').innerHTML = addExampleHTML(prob) + origPanel(prob.id, ['cond']) + condPanel(prob);
+  $('addOrig').innerHTML = addExampleHTML(prob) + origPanel(prob.id, ['cond']) + condPanel(prob) + learnRefPanel('add');
   drawAdd();
 }
 /* 부가조건을 실제로 어떻게 래더로 구현하는지 예시로 보여준다 (문제 조건에 맞춰 골라서) */
@@ -1113,7 +1123,7 @@ function resetAsm(){
   $('asmCond').innerHTML =
     `<b>단속동작</b> PB2 — 1사이클 후 종료 · <b>연속동작</b> ${contStartTxt()} — 공작물 ${workTxt()}, ${contTxt()}<br>` +
     `<b>부가조건1</b> ${prob.cond.add1}<br><b>부가조건2</b> ${prob.cond.add2}<br><b>부가조건3</b> ${prob.cond.add3}`;
-  $('asmOrig').innerHTML = origPanel(prob.id, ['flow']);
+  $('asmOrig').innerHTML = origPanel(prob.id, ['flow']) + learnRefPanel('asm');
   drawAsm();
 }
 function drawAsm(){
