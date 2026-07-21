@@ -464,9 +464,9 @@ const best = (stage, id) => progress[stage + '_' + (id==null?prob.id:id)];
    스텝 방식도 더 단순한 B체인에서 먼저 익히고 A체인으로 넘어간다. */
 const STAGE_DEFS = [
   { n:1, key:'io',  t:'설비와 I/O 파악',        d:'설비가 어떻게 생겼고 LS·S·SOL이 뭔지 먼저 눈에 익힙니다.' },
-  { n:2, key:'tst', t:'테스트동작 (B스텝)',     d:'변위단계선도를 B1~B9로 옮깁니다. 이게 안 되면 실격 — 제일 먼저.' },
+  { n:2, key:'tst', t:'테스트동작 (B스텝)',     d:'변위단계선도를 B 스텝으로 옮깁니다. 이게 안 되면 실격 — 제일 먼저.' },
   { n:3, key:'asm', t:'공정순서도 읽기',        d:'문제지에 주어지는 순서도를 정확히 읽는 훈련.' },
-  { n:4, key:'lad', t:'단속·연속 (A스텝) ★',    d:'본론. 공정순서도를 A1~A11 스텝 래더로 옮깁니다.' },
+  { n:4, key:'lad', t:'단속·연속 (A스텝) ★',    d:'본론. 공정순서도를 A1~A12 스텝 래더로 옮깁니다.' },
   { n:5, key:'add', t:'부가조건 구현',          d:'램프 점등·점멸, 반복, 비상정지. 문제마다 다릅니다.' },
   { n:6, key:'sim', t:'전체 시운전',            d:'짠 순서대로 가상 설비를 돌려 충돌·불량을 확인.', noLearn:true, noTest:true }
 ];
@@ -591,8 +591,8 @@ function buildLearn(key){
       TIP('이게 왜 좋냐면, 사이클이 끝날 때 스텝을 하나씩 리셋할 필요가 없습니다. A1만 끊으면 끝입니다.'));
     P1.push(H2('테스트동작은 B, 단속·연속은 A') +
       P('한 프로그램 안에 테스트동작·단속동작·연속동작·부가조건이 전부 들어가야 합니다. 그런데 다 섞으면 엉킵니다.') +
-      P('그래서 <b>테스트동작은 B1~B9, 단속·연속동작은 A1~A11</b>로 스텝 체인을 따로 씁니다.') +
-      TIP('이 단계에서 다루는 건 <b>A 체인(단속·연속)</b>입니다. 공정순서도를 옮기는 게 A 체인이에요.'));
+      P('그래서 <b>테스트동작은 B, 단속·연속동작은 A</b>로 스텝 체인을 따로 씁니다. 이 문제의 A 체인은 <b>A1~A' + STEPS[prob.id].length + '</b>까지입니다.') +
+      TIP('보통 A12까지지만, <b>지연 단계가 부가조건으로 빠지는 문제는 A11까지</b>입니다(공개문제 13). 이 문제는 A' + STEPS[prob.id].length + '.'));
     P1.push(H2('타이머는 이렇게') +
       P('"1초 지연" 같은 게 나오면 타이머를 씁니다. 지연을 시작시킬 스텝이 타이머를 켜고, <b>타이머가 다 되면 그게 다음 스텝의 전환조건</b>이 됩니다.') +
       `<div style="text-align:center; color:var(--acc); margin:10px 0">A4 → TON T3 (PT = T#2S) &nbsp;⇒&nbsp; A5의 전환조건 = <b>T3.Q</b></div>` +
@@ -1193,7 +1193,9 @@ function drawAdd(){
   const q = addQs[addIdx];
   $('addProg').textContent = `${addIdx+1} / ${addQs.length}`;
   $('addQ').innerHTML = q.q; $('addWhy').innerHTML='';
-  const opts = shuffle(Array.from(new Set([q.a].concat(q.pool.filter(x=>x!==q.a).slice(0,3)))));
+  /* 오답은 '먼저 중복 제거 → 무작위 3개' 순서라야 보기가 항상 4개(또는 최대)이고 매번 다르다 */
+  const distract = shuffle([...new Set(q.pool.filter(x=>x!==q.a))]).slice(0,3);
+  const opts = shuffle([q.a, ...distract]);
   $('addOpts').innerHTML = opts.map(o=>
     `<button class="blk" style="text-align:left" onclick="ansAdd(this)" data-v="${encodeURIComponent(o)}">${o}</button>`).join('');
 }
