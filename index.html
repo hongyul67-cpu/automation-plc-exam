@@ -1098,35 +1098,92 @@ function startAdd(){
 function addExampleHTML(p){
   const ex = [];
   const c = (p.cond.add1 + p.cond.add2 + p.cond.add3);
-  // 점멸(플리커) — 거의 모든 문제에 나옴
-  const flick = /점멸/.test(c);
-  const half = /0\.5초/.test(c), one = /1초 ON/.test(c);
-  if(flick){
+  const half = /0\.5초/.test(p.cond.add1);
+  const flag = half ? '_T1S' : '_T2S';
+  if(/점멸/.test(c)){
     ex.push(exCard('점멸(플리커)',
       `조건이 참일 때 <b>시스템 플래그</b>로 램프를 깜빡인다.`,
-      `[조건] ─┤├─┤ ${half?'_T1S':'_T2S'} ├───────( 램프 )`,
-      `<b>_T1S</b> = 0.5초 ON/OFF · <b>_T2S</b> = 1초 ON/OFF. 타이머를 따로 안 짜도 이 접점만 직렬로 걸면 된다.`));
+      exFlickSVG(flag),
+      `<b>_T1S</b> = 0.5초 ON/OFF · <b>_T2S</b> = 1초 ON/OFF. 타이머를 따로 안 짜도 이 접점만 직렬로 걸면 램프가 깜빡인다.`));
   }
-  // 카운터 — 개수 세는 조건이 있으면
-  if(/(개|2개|카운터|저장)/.test(c) && /(금속|비금속).*(개|2개)/.test(c.replace(/\s/g,''))){
+  // 카운터 — 개수를 세는 조건이 있는 문제에만
+  if(/(금속|비금속).{0,6}\d개/.test(c.replace(/\s/g,'')) || /저장.{0,6}개수/.test(c)){
     ex.push(exCard('개수 세기(카운터 CTU)',
-      `공작물 개수를 센다. 리셋(R)은 사이클 종료(CR/A12)에.`,
-      `[S4] ─┤↑├──CU┌ CTU ┐Q─→ (도달하면 ON)\n            [CR]──R│ PV=2 │`,
-      `금속=S3, 비금속=S4·S3̄. <b>재질 상관없이 셀 때는 S4</b>로 센다. Q가 켜지면 목표 개수 도달.`));
+      `공작물이 목표 개수만큼 오면 Q가 켜진다.`,
+      exCounterSVG(2),
+      `금속=S3, 비금속=S4·S3̄. <b>재질 상관없이 셀 때는 S4</b>로 센다. 리셋(R)은 사이클/연속이 끝날 때(CR·A12).`));
   }
-  // 비상정지 — 부가3
   ex.push(exCard('비상정지(부가조건3)',
-    `SW4를 누르면 현재 상태로 멈추고 적색램프 점멸.`,
-    `[SW4]─┤├─┬─( 정지유지 )\n [정지]─┤├─┘   [정지]─┤├─┤ ${/1초/.test(p.cond.add3)?'_T2S':'_T1S'} ├─( 적색 )`,
+    `SW4를 누르면 '정지'가 자기유지되고, 적색램프가 깜빡인다.`,
+    exEstopSVG(/1초/.test(p.cond.add3) ? '_T2S' : '_T1S'),
     p.cond.add3));
   return ex.join('');
 }
-function exCard(title, desc, ladder, note){
+function exCard(title, desc, svg, note){
   return `<details class="card blk2" open><summary>🔧 예시: ${title}</summary>` +
     `<div class="cond" style="margin:2px 0 6px">${desc}</div>` +
-    `<pre style="background:#0a1622;border:1px solid var(--line);border-radius:6px;padding:8px;` +
-    `font-size:.72rem;color:#bfe;overflow-x:auto;white-space:pre;margin:0 0 6px">${ladder}</pre>` +
+    `<div style="overflow-x:auto;margin:0 0 6px">${svg}</div>` +
     `<div class="cond" style="margin:0">💡 ${note}</div></details>`;
+}
+/* 예시 래더 SVG — 앱의 나머지 래더와 같은 시각언어로 그린다 */
+function coilSVG(cx, cy, label, col){
+  return `<circle cx="${cx}" cy="${cy}" r="12" fill="none" stroke="${WIRE}" stroke-width="2"/>` +
+    `<text x="${cx}" y="${cy-17}" fill="${col||'#e8f4ff'}" font-size="12" text-anchor="middle">${label}</text>`;
+}
+function exFlickSVG(flag){
+  const L=16,R=384,y=46,coilX=330;
+  let s=`<svg viewBox="0 0 400 74" style="width:100%;max-width:400px">
+    <line x1="${L}" y1="16" x2="${L}" y2="68" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${R}" y1="16" x2="${R}" y2="68" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${L}" y1="${y}" x2="${coilX-12}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${coilX+12}" y1="${y}" x2="${R}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(100, y, '조건', false, '#38bdf8');
+  s+=contact(210, y, flag, false, '#fbbf24');
+  s+=coilSVG(coilX, y, '램프', '#fbbf24');
+  return s+`</svg>`;
+}
+function exCounterSVG(pv){
+  const L=16,R=390,y=44;
+  let s=`<svg viewBox="0 0 400 104" style="width:100%;max-width:400px">
+    <line x1="${L}" y1="14" x2="${L}" y2="98" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${R}" y1="14" x2="${R}" y2="98" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${L}" y1="${y}" x2="80" y2="${y}" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(100, y, 'S4', false, '#38bdf8');
+  s+=`<line x1="120" y1="${y}" x2="190" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
+    <rect x="190" y="24" width="120" height="66" rx="3" fill="#0a1622" stroke="${WIRE}"/>
+    <text x="250" y="20" fill="#8fb6d6" font-size="11" text-anchor="middle">CTU 카운터</text>
+    <text x="197" y="${y+4}" fill="#cfe" font-size="11">CU</text>
+    <text x="197" y="66" fill="#cfe" font-size="11">R</text>
+    <text x="197" y="86" fill="#cfe" font-size="11">PV=${pv}</text>
+    <text x="303" y="${y+4}" fill="#86efac" font-size="11" text-anchor="end">Q</text>
+    <line x1="${L}" y1="62" x2="150" y2="62" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(100, 62, 'CR', false, '#f59e0b');
+  s+=`<line x1="150" y1="62" x2="190" y2="62" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="310" y1="${y}" x2="${R}" y2="${y}" stroke="${WIRE}" stroke-width="2"/>
+    <text x="350" y="${y-6}" fill="#86efac" font-size="10" text-anchor="middle">${pv}개면 ON</text></svg>`;
+  return s;
+}
+function exEstopSVG(flag){
+  const L=16,R=390,y1=42,yb=68,y2=100,coilX=320;
+  let s=`<svg viewBox="0 0 400 120" style="width:100%;max-width:400px">
+    <line x1="${L}" y1="14" x2="${L}" y2="116" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${R}" y1="14" x2="${R}" y2="116" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${L}" y1="${y1}" x2="${coilX-12}" y2="${y1}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${coilX+12}" y1="${y1}" x2="${R}" y2="${y1}" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(90, y1, 'SW4', false, '#ef4444');
+  s+=coilSVG(coilX, y1, '정지', '#ef4444');
+  // 자기유지 분기 (정지 접점)
+  s+=`<line x1="50" y1="${y1}" x2="50" y2="${yb}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="50" y1="${yb}" x2="140" y2="${yb}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="140" y1="${yb}" x2="140" y2="${y1}" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(95, yb, '정지', false, '#38bdf8');
+  // 둘째 rung: 정지 · flag → 적색
+  s+=`<line x1="${L}" y1="${y2}" x2="${coilX-12}" y2="${y2}" stroke="${WIRE}" stroke-width="2"/>
+    <line x1="${coilX+12}" y1="${y2}" x2="${R}" y2="${y2}" stroke="${WIRE}" stroke-width="2"/>`;
+  s+=contact(90, y2, '정지', false, '#38bdf8');
+  s+=contact(200, y2, flag, false, '#fbbf24');
+  s+=coilSVG(coilX, y2, '적색', '#ef4444');
+  return s+`</svg>`;
 }
 function drawAdd(){
   if(addIdx >= addQs.length){
