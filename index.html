@@ -76,7 +76,13 @@
 
   /* 3단계 작업대 — 참고 자료(순서도·I/O 할당표)를 옆에 띄워두고 푼다.
      I/O 할당표는 시험지에 인쇄되어 주어지므로 외우게 할 이유가 없다. */
-  .ws{display:grid; grid-template-columns:1fr 320px; gap:12px; align-items:start}
+  .ws{display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:12px; align-items:start}
+  /* 데스크톱에서는 1080 래퍼를 벗어나 화면을 더 쓴다 — 참고자료(원본 시험지·선도)가
+     좁은 띠에 몰려 스크롤되는 답답함을 없애고, 원본 이미지를 크게 본다. */
+  @media(min-width:1101px){
+    .ws{position:relative; left:50%; transform:translateX(-50%);
+        width:min(94vw,1340px); grid-template-columns:minmax(0,1fr) 430px}
+  }
   /* 사이드가 화면보다 길면 sticky가 붙을 여백이 없어 그냥 흘러가 버린다 → 높이를 화면에 가둔다 */
   .ws .side{position:sticky; top:8px; display:flex; flex-direction:column; gap:8px;
     max-height:calc(100vh - 20px); overflow-y:auto}
@@ -929,7 +935,7 @@ function startLad(){
   $('ladBanner').innerHTML = '';
   $('ladDone').innerHTML = '아직 없습니다.';
   $('ladIO').innerHTML = ioGroupsHTML();
-  $('ladOrig').innerHTML = origPanel(prob.id, ['flow','cond']) + condPanel(prob) + learnRefPanel('lad');
+  $('ladOrig').innerHTML = origPanel(prob.id, ['flow','disp','cond']) + condPanel(prob) + learnRefPanel('lad');
   drawLad();
 }
 /* 래더 한 줄을 그린다.
