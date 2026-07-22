@@ -1337,12 +1337,11 @@ function loadWork(){
   /* 공개문제 「8) 시스템 초기화 상태」 — 모든 실린더 후진, 모든 모터 정지, 모든 램프 소등 */
   S.cyl = { sup:0, mach:0, push:0, ej:0 };
   S.motor = { drill:0, conv:0 };
-  clearInterval(blinkTimer); blinkTimer = null;
-  S.lamp = { PL1:0, PL2:0, PL3:0 };
+  clearLamps();
   S.works = []; S.boxes={eject:0, keep:0}; S.onTable=null; S.onBelt=null;
   const n = Math.max(prob.minWork, 3);
   for(let i=0;i<n;i++) S.works.push({ mat: Math.random()<.5 ? '금속' : '비금속' });
-  S.err=null; S.cycles=0; S.ok=0; S.metalStored=0;
+  S.err=null; S.cycles=0; S.ok=0; S.metalStored=0; S.cntMetal=0; S.cntNon=0;
   draw();
   log(`매거진에 공작물 ${n}개 적재 (${S.works.map(w=>w.mat[0]).join('·')})`);
 }
@@ -1503,6 +1502,12 @@ async function exec(key){
     case 'motor':
       S.motor[b.dev] = b.on; draw();
       log(`${b.t} (${b.sol} ${b.on?'ON':'OFF'})`);
+      { // 부가조건1: 컨베이어/가공모터 구동 중 램프
+        const r = lampRule();
+        if(b.dev==='conv' && r.conv)        setLamp(r.conv.lamp, b.on ? r.conv.mode : 'off');
+        if(b.dev==='conv' && r.greenOnBelt) setLamp('PL3', b.on ? 'on' : 'off');
+        if(b.dev==='drill' && r.drill)      setLamp(r.drill.lamp, b.on ? r.drill.mode : 'off');
+      }
       await sleep(220);
       break;
     case 'delay':
@@ -1526,20 +1531,82 @@ function fail(msg){
 }
 
 /* --- 부가조건1 램프 (문제별) --- */
-function lampByMaterial(mat){
-  // 문제1: 금속 점등 / 비금속 점멸,  문제3: 금속 점멸 / 비금속 점등
-  if(prob.id===1) return mat==='금속' ? 'on' : 'blink';
-  if(prob.id===3) return mat==='금속' ? 'blink' : 'on';
-  return null;  // 문제2는 판별 순서 기반이라 별도
-}
-let blinkTimer=null;
-function setYellow(mode){
-  clearInterval(blinkTimer); blinkTimer=null;
-  if(mode==='on'){ S.lamp.PL2=1; }
-  else if(mode==='blink'){ let v=0; blinkTimer=setInterval(()=>{ v^=1; S.lamp.PL2=v; draw(); }, 500); }
-  else { S.lamp.PL2=0; }
+/* ── 부가조건1 램프 (문제별) ─────────────────────────────────
+   램프는 서로 독립적으로 점멸하므로 램프마다 타이머를 따로 둔다.
+   mode: 'off' | 'on' | 'b05'(0.5초 점멸) | 'b10'(1초 점멸) */
+const lampTimers = { PL1:null, PL2:null, PL3:null };
+function setLamp(id, mode){
+  clearInterval(lampTimers[id]); lampTimers[id]=null;
+  if(mode==='on'){ S.lamp[id]=1; }
+  else if(mode==='b05' || mode==='b10'){ let v=1; S.lamp[id]=1;
+    lampTimers[id]=setInterval(()=>{ v^=1; S.lamp[id]=v; draw(); }, mode==='b05'?500:1000); }
+  else { S.lamp[id]=0; }
   draw();
 }
+function clearLamps(){ ['PL1','PL2','PL3'].forEach(id=>{ clearInterval(lampTimers[id]); lampTimers[id]=null; S.lamp[id]=0; }); }
+
+/* 문제별 부가조건1 램프 규칙 — 선언적으로 기술하고 lamp1*()이 해석한다.
+   mag:'on' 매거진 있으면 녹색 / magBlinkEmpty:true 없으면 점멸
+   matY / matG: 재질 판별 시 황색(PL2)/녹색(PL3) {metal, non} 모드
+   greenOnBelt: 컨베이어에 공작물 있는 동안 녹색
+   conv:{lamp,mode} 컨베이어 구동 중 / drill:{lamp,mode} 가공모터 회전 중
+   countY/countG:{metric:'metal'|'non', rules:[[임계,모드],...] 큰 임계부터}
+   seq2: 2번 전용(판별 누적개수 1소등/2황/3녹/4↑황녹)
+   clearY/clearG:'cycle'(사이클 끝 소등) | 'cont'(연속 끝 소등) */
+const LAMP1 = {
+  1:  { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  2:  { seq2:true,         clearY:'cont' },
+  3:  {                    matY:{metal:'b05', non:'on' }, clearY:'cycle' },
+  4:  { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  5:  {                    matG:{metal:'b10', non:'on' }, clearG:'cycle' },
+  6:  {                    matG:{metal:'b10', non:'on' }, clearG:'cycle', countY:{metric:'non', rules:[[2,'b10']]}, clearY:'cont' },
+  7:  { countY:{metric:'metal', rules:[[2,'on']]}, clearY:'cont', conv:{lamp:'PL3', mode:'b05'} },
+  8:  { mag:'on', conv:{lamp:'PL1', mode:'on'}, countY:{metric:'non', rules:[[2,'on']]}, clearY:'cont' },
+  9:  { conv:{lamp:'PL2', mode:'b05'} },
+  10: {                    matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  11: { mag:'on',          countY:{metric:'metal', rules:[[2,'on']]}, clearY:'cont' },
+  12: { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  13: { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  14: { mag:'on',          matY:{metal:'b10', non:'on' }, clearY:'cycle' },
+  15: {                    matY:{metal:'b05', non:'on' }, clearY:'cycle' },
+  16: { greenOnBelt:true,  matY:{metal:'b05', non:'on' }, clearY:'cycle' },
+  17: { countG:{metric:'non', rules:[[2,'on'],[1,'b10']]}, clearG:'cont' },
+  18: { countY:{metric:'non', rules:[[2,'b05'],[1,'on']]}, clearY:'cont', countG:{metric:'metal', rules:[[1,'b10']]}, clearG:'cont' },
+  19: { drill:{lamp:'PL3', mode:'on'}, matY:{metal:'b05', non:'on'}, clearY:'cycle' },
+  20: { magBlinkEmpty:true, matY:{metal:'on', non:'b05'}, clearY:'cycle' },
+};
+function lampRule(){ return LAMP1[prob.id] || {}; }
+function countMode(rule, ctx){
+  const n = rule.metric==='metal' ? ctx.cntMetal : ctx.cntNon;
+  for(const [thr,mode] of rule.rules){ if(n>=thr) return mode; }   // 큰 임계부터 첫 매치
+  return 'off';
+}
+/* 재질 판별 시점 램프 */
+function lamp1Material(mat, ctx){
+  const r = lampRule(), metal = (mat==='금속');
+  if(r.matY) setLamp('PL2', metal ? r.matY.metal : r.matY.non);
+  if(r.matG) setLamp('PL3', metal ? r.matG.metal : r.matG.non);
+  if(r.countY) setLamp('PL2', countMode(r.countY, ctx));
+  if(r.countG) setLamp('PL3', countMode(r.countG, ctx));
+  if(r.seq2){                       // 2번: 누적 개수 1소등/2황/3녹/4↑황녹
+    const n = ctx.cntMetal + ctx.cntNon;
+    setLamp('PL2', (n===2 || n>=4) ? 'on' : 'off');
+    setLamp('PL3', (n>=3) ? 'on' : 'off');
+  }
+}
+/* 매거진 녹색 (사이클 시작 시) */
+function lamp1Magazine(){
+  const r = lampRule();
+  if(r.mag) setLamp('PL3', S.works.length ? 'on' : 'off');
+  else if(r.magBlinkEmpty) setLamp('PL3', S.works.length ? 'on' : 'b05');
+}
+/* 사이클 끝 / 연속 끝 소등 */
+function lamp1ClearCycle(){
+  const r = lampRule();
+  if(r.clearY==='cycle') setLamp('PL2','off');
+  if(r.clearG==='cycle') setLamp('PL3','off');
+}
+function lamp1ClearCont(){ clearLamps(); }
 
 /* --- 사이클 --- */
 async function runCycle(mode){
@@ -1552,7 +1619,7 @@ async function runCycle(mode){
 
   do{
     if(!S.works.length){ log('공작물이 모두 소진되어 공정을 종료합니다.', 'g'); break; }
-    S.lamp.PL3 = (prob.id===1 && S.works.length>0) ? 1 : S.lamp.PL3;  // 부가조건1(문제1): 매거진 유무 → 녹색
+    lamp1Magazine();               // 부가조건1: 매거진 유무 → 녹색 (문제별)
     let mat = null;
 
     for(let i=0;i<seq.length;i++){
@@ -1580,10 +1647,10 @@ async function runCycle(mode){
       await moveBelt(GEO.sense.x, 900);
       if(abortRun) break;
       mat = S.onBelt.mat;
-      if(mat==='금속') S.metalStored++;
+      if(mat==='금속'){ S.metalStored++; S.cntMetal++; } else S.cntNon++;
       /* S4는 재질 상관없이 전부 잡고, S3(유도형)이 금속만 잡는다 */
       log(`재질 판별 — ${mat} (S4 ON${mat==='금속' ? ' · S3 ON → 금속' : ' · S3 OFF → 비금속'})`, 'g');
-      const lm = lampByMaterial(mat); if(lm) setYellow(lm);
+      lamp1Material(mat, S);        // 부가조건1: 재질/개수별 램프 (문제별)
 
       if(mat === prob.ejectMaterial){
         await moveBelt(GEO.ejx.x, 700);
@@ -1601,8 +1668,12 @@ async function runCycle(mode){
     if(abortRun) break;
 
     S.motor.conv = 0; draw();
+    // 컨베이어 구동 중 램프(7·8·9·16번)는 컨베이어 정지와 함께 끈다
+    { const rc = lampRule();
+      if(rc.conv) setLamp(rc.conv.lamp, 'off');
+      if(rc.greenOnBelt) setLamp('PL3', 'off'); }
     log('컨베이어 정지 — 1사이클 완료', 'g');
-    setYellow('off');
+    lamp1ClearCycle();             // 사이클 종료 시 소등 대상(재질램프 등)
     S.cycles++; S.ok++;
     sGood();
     /* 종료 조건이 문제마다 다르다: 소진까지 / N사이클 / 금속 N개 저장까지 */
@@ -1620,7 +1691,7 @@ async function runCycle(mode){
     await sleep(300);
   } while(mode==='연속' && S.works.length && !abortRun);
 
-  if(!S.works.length) S.lamp.PL3 = 0;
+  if(!abortRun) lamp1ClearCont();   // 연속/단속 정상 종료 시 남은 램프 정리
   draw();
   running = false;
   $('btnPB2').disabled = $('btnPB3').disabled = false; $('btnStop').disabled = true;
@@ -1636,12 +1707,11 @@ function estop(){
   if(!running) return;
   abortRun = true;
   S.motor.drill = 0; S.motor.conv = 0;
-  S.lamp.PL2 = 0; S.lamp.PL3 = 0;
-  let v=0; clearInterval(blinkTimer);
-  blinkTimer = setInterval(()=>{ v^=1; S.lamp.PL1=v; draw(); }, prob.id===2?1000:500);
+  setLamp('PL2','off'); setLamp('PL3','off');       // 녹색·황색 소등
+  setLamp('PL1', prob.id===2 ? 'b10' : 'b05');      // 적색 점멸 (2번은 1초)
   log('■ 비상정지 — 가공모터·컨베이어 정지, 녹색·황색 소등, 적색 점멸', 'e');
   $('simBanner').innerHTML = `<div class="banner warn">비상정지(부가조건3): ${prob.cond.add3}</div>`;
-  setTimeout(()=>{ clearInterval(blinkTimer); S.lamp.PL1=0; draw(); }, 4000);
+  setTimeout(()=>{ setLamp('PL1','off'); }, 4000);
 }
 
 /* ===================== 결과 ===================== */
