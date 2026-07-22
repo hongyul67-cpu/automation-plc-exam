@@ -1559,13 +1559,16 @@ async function runCycle(mode){
       if(abortRun) break;
       await exec(seq[i]);
       if(abortRun) break;
-      // 부가조건2(문제1): 가공 하강~상승 2회 반복
+      // 부가조건2: 가공 하강~상승을 정해진 횟수(times)만큼 반복 (13번은 3회)
       const rep = prob.repeat;
       if(rep && seq[i]===rep.to && mode==='연속'){
         const a = seq.indexOf(rep.from), b = seq.indexOf(rep.to);
         if(a>=0 && b>a){
-          log(`↻ ${rep.note} — 2회차 반복`, 'g');
-          for(let j=a;j<=b && !abortRun;j++) await exec(seq[j]);
+          const times = rep.times || 2;           // 이미 1회 지나갔으니 (times-1)회 더 반복
+          for(let r=2; r<=times && !abortRun; r++){
+            log(`↻ ${rep.note} — ${r}회차`, 'g');
+            for(let j=a;j<=b && !abortRun;j++) await exec(seq[j]);
+          }
         }
       }
     }
