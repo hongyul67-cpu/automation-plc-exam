@@ -1328,7 +1328,7 @@ function initSim(){
     motor:{ drill:0, conv:0 },
     lamp:{ PL1:0, PL2:0, PL3:0 },
     works:[], onTable:null, onBelt:null, boxes:{eject:0, keep:0},
-    err:null, cycles:0, ok:0
+    err:null, cycles:0, ok:0, cutDrilled:false
   };
   loadWork(); draw(); log('설비 초기화 — 모든 실린더 후진, 모터 정지', 'g');
 }
@@ -1470,11 +1470,14 @@ async function exec(key){
   if(b.act==='cyl' && (b.dev==='sup'||b.dev==='push') && b.to===1 && S.cyl.mach>.1){
     return fail(`💥 충돌! 가공실린더가 내려와 있는데 ${b.t}을(를) 했습니다. 드릴에 부딪힙니다.`);
   }
-  if(key==='mach_down' && !S.motor.drill){
-    return fail(`⚠️ 가공 불량! 드릴이 정지한 상태로 가공실린더를 하강시켰습니다. 가공모터를 먼저 회전시켜야 합니다.`);
-  }
   if(key==='mach_down' && !S.onTable){
     return fail(`⚠️ 헛가공! 가공 위치에 공작물이 없는데 하강했습니다. 공급실린더로 공작물을 먼저 보내야 합니다.`);
+  }
+  /* 가공은 '하강→드릴' 순서도, '드릴→하강' 순서도 문제마다 다르다(예: 5·17번은 하강 먼저).
+     그래서 하강 즉시 불량으로 보지 않고, 드릴을 한 번도 돌리지 않고 상승하면 그때 불량 처리한다. */
+  if(key==='mach_down') S.cutDrilled = false;   // 새 가공 시작 — 드릴 회전 여부 추적 초기화
+  if(key==='mach_up' && !S.cutDrilled){
+    return fail(`⚠️ 가공 불량! 드릴을 돌리지 않고 가공을 마쳤습니다. 하강 전이나 하강 후에 가공모터를 회전시켜야 합니다.`);
   }
   if(key==='push_fwd' && !S.onTable){
     return fail(`⚠️ 송출할 공작물이 없습니다. 순서를 확인하세요.`);
@@ -1512,6 +1515,8 @@ async function exec(key){
       S.onBelt = null; draw();
       break;
   }
+  // 드릴이 도는 동안 가공실린더가 내려가 있으면 = 실제로 가공됨 (상승 시 불량 판정에 사용)
+  if(S.motor.drill && S.cyl.mach>.5) S.cutDrilled = true;
 }
 function fail(msg){
   S.err = msg; abortRun = true;
