@@ -81,7 +81,7 @@
      좁은 띠에 몰려 스크롤되는 답답함을 없애고, 원본 이미지를 크게 본다. */
   @media(min-width:1101px){
     .ws{position:relative; left:50%; transform:translateX(-50%);
-        width:min(94vw,1340px); grid-template-columns:minmax(0,1fr) 430px}
+        width:min(96vw,1500px); grid-template-columns:minmax(0,1fr) 500px}
   }
   /* 사이드가 화면보다 길면 sticky가 붙을 여백이 없어 그냥 흘러가 버린다 → 높이를 화면에 가둔다 */
   .ws .side{position:sticky; top:8px; display:flex; flex-direction:column; gap:8px;
@@ -370,8 +370,9 @@
   <section id="done" class="hide">
     <div class="card" style="text-align:center">
       <div id="doneBody"></div>
-      <div class="row" style="justify-content:center; margin-top:14px">
-        <button class="btn-main" onclick="goHome()">처음으로</button>
+      <div class="row" id="doneNav" style="justify-content:center; margin-top:14px; flex-wrap:wrap"></div>
+      <div class="row" style="justify-content:center; margin-top:10px; flex-wrap:wrap">
+        <button onclick="goHome()">← 처음으로</button>
         <button id="btnSubmit" class="hide" onclick="submitResult()">📤 선생님께 결과 제출</button>
       </div>
     </div>
@@ -717,7 +718,7 @@ function startStage(k){
 const startMode = startStage;   // 이전 버튼 호환
 
 /* ===================== 1단계 · 설비/IO 퀴즈 ===================== */
-let ioQs = [], ioIdx = 0, ioHit = 0;
+let ioQs = [], ioIdx = 0, ioHit = 0, ioAnswered = false;
 /* 입력은 "~가 켜졌다는 것은?"(무슨 일이 일어났나), 출력은 "~에 출력을 주면?"(무엇이 움직이나)으로
    나눠 묻는다 — LS2(전진 감지)와 SOL1(전진 구동)의 답이 똑같아지는 혼동을 없애기 위해. */
 const IO_MEAN_IN = [
@@ -775,6 +776,7 @@ function drawIO(){
     saveBest('io', sc); finish(sc, ioHit, ioQs.length, '설비·I/O 파악', 'io'); return;
   }
   const q = ioQs[ioIdx];
+  ioAnswered = false;
   $('ioProg').textContent = `${ioIdx+1} / ${ioQs.length}`;
   $('ioQ').innerHTML = q.q;
   $('ioWhy').innerHTML = '';
@@ -784,12 +786,17 @@ function drawIO(){
 function ansIO(i){
   const q = ioQs[ioIdx], btns = [...document.querySelectorAll('#ioOpts .blk')];
   const pick = decodeURIComponent(btns[i].dataset.v);
-  btns.forEach(b=>{ b.disabled = true;
-    if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok');
-    else if(b===btns[i]) b.classList.add('no-'); });
-  if(pick===q.a){ ioHit++; sGood(); } else sBad();
+  const good = pick===q.a;
+  if(!ioAnswered){ ioAnswered = true; if(good) ioHit++; }   // 점수는 첫 시도 기준
+  if(!good){                                                 // 틀리면 그 보기만 잠그고 다시 고르게 — 스스로 고쳐서 넘어간다
+    btns[i].disabled = true; btns[i].classList.add('no-'); sBad();
+    $('ioWhy').innerHTML = `❌ 아직 아니에요 — 다시 골라보세요.`;
+    return;
+  }
+  btns.forEach(b=>{ b.disabled = true; if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok'); });
+  sGood();
   $('ioWhy').innerHTML = `💡 ${q.why}`;
-  setTimeout(()=>{ ioIdx++; drawIO(); }, pick===q.a ? 800 : 2300);
+  setTimeout(()=>{ ioIdx++; drawIO(); }, 800);
 }
 
 /* ===================== 변위단계선도 도해 =====================
@@ -835,7 +842,7 @@ function dispSVG(pid, now){
 }
 
 /* ===================== 테스트동작 (B스텝) ===================== */
-let tstSteps = [], tstIdx = 0, tstHit = 0, tstTot = 0, tstPhase = 'cond';
+let tstSteps = [], tstIdx = 0, tstHit = 0, tstTot = 0, tstPhase = 'cond', tstAnswered = false;
 /* 선도에서 "지금 몇 단계 구간인가" — B스텝 n은 선도의 n→n+1 구간을 담당한다 */
 function startTst(){
   tstSteps = BSTEPS[prob.id]; tstIdx = 0; tstHit = 0; tstTot = 0; tstPhase = 'cond';
@@ -852,6 +859,7 @@ function drawTst(){
     saveBest('tst', sc); finish(sc, tstHit, tstTot, '테스트동작 B스텝', 'tst'); return;
   }
   const st = tstSteps[tstIdx], prev = tstIdx>0 ? tstSteps[tstIdx-1].id : null;
+  tstAnswered = false;
   $('tstProg').textContent = `${st.id} (${tstIdx+1}/${tstSteps.length})`;
   $('tstWhy').innerHTML = '';
   $('tstDisp').innerHTML = dispSVG(prob.id, tstIdx+1);
@@ -886,28 +894,29 @@ function ansTst(btn){
   const st = tstSteps[tstIdx], prev = tstIdx>0 ? tstSteps[tstIdx-1].id : null;
   const ans = tstPhase==='cond' ? condsTxt(st.cond) : driveText(st);
   const pick = decodeURIComponent(btn.dataset.v);
-  [...document.querySelectorAll('#tstOpts .blk')].forEach(b=>{ b.disabled=true;
-    if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok');
-    else if(b===btn) b.classList.add('no-'); });
-  tstTot++;
   const good = pick===ans;
-  if(good){ tstHit++; sGood(); } else sBad();
-
+  if(!tstAnswered){ tstAnswered = true; tstTot++; if(good) tstHit++; }   // 점수는 첫 시도 기준
+  if(!good){                                                             // 틀리면 그 보기만 잠그고 다시 — 선도·조건 보고 스스로 고친다
+    btn.disabled = true; btn.classList.add('no-'); sBad();
+    $('tstWhy').innerHTML = `❌ 아직 아니에요 — 옆의 선도와 조건을 보고 다시 골라보세요.`;
+    return;
+  }
+  [...document.querySelectorAll('#tstOpts .blk')].forEach(b=>{ b.disabled=true;
+    if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok'); });
+  sGood();
   if(tstPhase==='cond'){
-    $('tstWhy').innerHTML = good
-      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `B${tstSteps.length}̄`}</b>`
-      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(condName).join(' 그리고 ')}`;
-    setTimeout(()=>{ tstPhase='drive'; drawTst(); }, good?900:2400);
+    $('tstWhy').innerHTML = `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `B${tstSteps.length}̄`}</b>`;
+    setTimeout(()=>{ tstPhase='drive'; drawTst(); }, 900);
   }else{
-    $('tstWhy').innerHTML = good ? '💡 좋습니다.' : `💡 정답은 <b>${ans}</b>`;
+    $('tstWhy').innerHTML = '💡 좋습니다.';
     const line = `<div><b>${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${prev || `B${tstSteps.length}̄`} → ${ans}</div>`;
     $('tstDone').innerHTML = ($('tstDone').innerHTML.startsWith('아직') ? '' : $('tstDone').innerHTML) + line;
-    setTimeout(()=>{ tstPhase='cond'; tstIdx++; drawTst(); }, good?900:2400);
+    setTimeout(()=>{ tstPhase='cond'; tstIdx++; drawTst(); }, 900);
   }
 }
 
 /* ===================== 3단계 · 순서도 → 스텝 래더 ===================== */
-let ladSteps = [], ladIdx = 0, ladHit = 0, ladTot = 0, ladPhase = 'cond';
+let ladSteps = [], ladIdx = 0, ladHit = 0, ladTot = 0, ladPhase = 'cond', ladAnswered = false;
 /* 한 스텝이 출력과 타이머를 동시에 구동하기도 한다(예: 문제1 A2 = 가공모터 회전 + T2 기동) */
 function driveText(s){
   const parts = s.drive.slice();
@@ -1014,6 +1023,7 @@ function drawLad(){
     saveBest('lad', sc); finish(sc, ladHit, ladTot, '스텝 래더 변환', 'lad'); return;
   }
   const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
+  ladAnswered = false;
   $('ladProg').textContent = `${st.id} (${ladIdx+1}/${ladSteps.length})`;
   $('ladWhy').innerHTML = '';
   drawLadFlow();
@@ -1047,29 +1057,29 @@ function ansLad(btn){
   const st = ladSteps[ladIdx], prev = ladIdx>0 ? ladSteps[ladIdx-1].id : null;
   const ans = ladPhase==='cond' ? condsTxt(st.cond) : driveText(st);
   const pick = decodeURIComponent(btn.dataset.v);
-  const btns = [...document.querySelectorAll('#ladOpts .blk')];
-  btns.forEach(b=>{ b.disabled=true;
-    if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok');
-    else if(b===btn) b.classList.add('no-'); });
-  ladTot++;
   const good = pick===ans;
-  if(good){ ladHit++; sGood(); } else sBad();
-
+  if(!ladAnswered){ ladAnswered = true; ladTot++; if(good) ladHit++; }   // 점수는 첫 시도 기준
+  if(!good){                                                             // 틀리면 그 보기만 잠그고 다시 — 순서도·조건표 보고 스스로 고친다
+    btn.disabled = true; btn.classList.add('no-'); sBad();
+    $('ladWhy').innerHTML = `❌ 아직 아니에요 — 옆의 순서도·조건표를 보고 다시 골라보세요.`;
+    return;
+  }
+  const btns = [...document.querySelectorAll('#ladOpts .blk')];
+  btns.forEach(b=>{ b.disabled=true; if(decodeURIComponent(b.dataset.v)===ans) b.classList.add('ok'); });
+  sGood();
   if(ladPhase==='cond'){
-    $('ladWhy').innerHTML = good
-      ? `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `A${ladSteps.length}̄`}</b> — ${st.cond.map(condName).join(' 그리고 ')}`
-      : `💡 정답은 <b>${ans}</b> — ${st.cond.map(condName).join(' 그리고 ')}. ${ladIdx===0?'':`직전 ${prev} 스텝이 끝난 걸 이걸로 압니다.`}`;
-    setTimeout(()=>{ ladPhase='drive'; drawLad(); }, good?900:2400);
+    $('ladWhy').innerHTML = `💡 <b>${st.id} = (${ans} + ${st.id}) · ${prev || `A${ladSteps.length}̄`}</b> — ${st.cond.map(condName).join(' 그리고 ')}`;
+    setTimeout(()=>{ ladPhase='drive'; drawLad(); }, 900);
   }else{
-    $('ladWhy').innerHTML = good ? `💡 좋습니다.` : `💡 정답은 <b>${ans}</b>`;
+    $('ladWhy').innerHTML = `💡 좋습니다.`;
     const line = `<div><b>${st.id}</b> = (${condsTxt(st.cond)} + ${st.id}) · ${prev || `A${ladSteps.length}̄`} → ${ans}</div>`;
     $('ladDone').innerHTML = ($('ladDone').innerHTML.startsWith('아직') ? '' : $('ladDone').innerHTML) + line;
-    setTimeout(()=>{ ladPhase='cond'; ladIdx++; drawLad(); }, good?900:2400);
+    setTimeout(()=>{ ladPhase='cond'; ladIdx++; drawLad(); }, 900);
   }
 }
 
 /* ===================== 4단계 · 부가조건 ===================== */
-let addQs = [], addIdx = 0, addHit = 0;
+let addQs = [], addIdx = 0, addHit = 0, addAnswered = false;
 function buildAddQs(){
   const qs = [];
   const others = PROBLEMS.filter(p=>p.id!==prob.id);
@@ -1197,6 +1207,7 @@ function drawAdd(){
     saveBest('add', sc); finish(sc, addHit, addQs.length, '부가조건', 'add'); return;
   }
   const q = addQs[addIdx];
+  addAnswered = false;
   $('addProg').textContent = `${addIdx+1} / ${addQs.length}`;
   $('addQ').innerHTML = q.q; $('addWhy').innerHTML='';
   /* 오답은 '먼저 중복 제거 → 무작위 3개' 순서라야 보기가 항상 4개(또는 최대)이고 매번 다르다 */
@@ -1207,12 +1218,18 @@ function drawAdd(){
 }
 function ansAdd(btn){
   const q = addQs[addIdx], pick = decodeURIComponent(btn.dataset.v);
+  const good = pick===q.a;
+  if(!addAnswered){ addAnswered = true; if(good) addHit++; }   // 점수는 첫 시도 기준
+  if(!good){                                                   // 틀리면 그 보기만 잠그고 다시 — 원문 보고 스스로 고친다
+    btn.disabled = true; btn.classList.add('no-'); sBad();
+    $('addWhy').innerHTML = `❌ 아직 아니에요 — 옆의 부가조건 원문을 보고 다시 골라보세요.`;
+    return;
+  }
   [...document.querySelectorAll('#addOpts .blk')].forEach(b=>{ b.disabled=true;
-    if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok');
-    else if(b===btn) b.classList.add('no-'); });
-  if(pick===q.a){ addHit++; sGood(); } else sBad();
+    if(decodeURIComponent(b.dataset.v)===q.a) b.classList.add('ok'); });
+  sGood();
   $('addWhy').innerHTML = `💡 ${q.why}`;
-  setTimeout(()=>{ addIdx++; drawAdd(); }, pick===q.a?900:2600);
+  setTimeout(()=>{ addIdx++; drawAdd(); }, 900);
 }
 
 /* ===================== 조립 모드 ===================== */
@@ -1632,9 +1649,19 @@ function finish(score, correct, total, modeName, fromStage){
        <div class="score">${score}점</div>
        <div style="color:var(--gold); font-size:1.2rem">${grade}</div>
        <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 정확</div>`;
+    // 막다른 화면이 되지 않게 — 다시 풀기 / 다음 단계 배우기 / 시운전으로 이어준다
+    const order = ['io','tst','asm','lad','add'];
+    const next = order[order.indexOf(fromStage) + 1];   // add 다음은 없음(undefined)
+    let nav = `<button class="btn-main" onclick="doneGoTest('${fromStage}')">🔁 다시 풀기</button>`;
+    if(next) nav += `<button onclick="doneGoLearn('${next}')">▶ 다음 단계 배우기</button>`;
+    nav += `<button class="btn-main" onclick="doneGoTest('sim')">🏭 시운전 하러 가기 →</button>`;
+    $('doneNav').innerHTML = nav;
     if(rcReady()) $('btnSubmit').classList.remove('hide');
   }, 1400);
 }
+/* done 화면에서 다른 단계로 — done을 숨기고 해당 단계 테스트/배우기를 연다 */
+function doneGoTest(k){ $('done').classList.add('hide'); startStage(k); }
+function doneGoLearn(k){ $('done').classList.add('hide'); startLearn(k); }
 function submitResult(){
   if(!lastResult || !rcReady()) return;
   try{
