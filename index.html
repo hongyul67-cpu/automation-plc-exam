@@ -599,7 +599,7 @@ function buildLearn(key){
     P1.push(H2('테스트동작은 B, 단속·연속은 A') +
       P('한 프로그램 안에 테스트동작·단속동작·연속동작·부가조건이 전부 들어가야 합니다. 그런데 다 섞으면 엉킵니다.') +
       P('그래서 <b>테스트동작은 B, 단속·연속동작은 A</b>로 스텝 체인을 따로 씁니다. 이 문제의 A 체인은 <b>A1~A' + STEPS[prob.id].length + '</b>까지입니다.') +
-      TIP('보통 A12까지지만, <b>지연 단계가 부가조건으로 빠지는 문제는 A11까지</b>입니다(공개문제 13). 이 문제는 A' + STEPS[prob.id].length + '.'));
+      TIP('공정순서도의 블록 하나하나가 스텝 하나씩입니다. 지연시간이 있으면 그것도 스텝(타이머)으로 셉니다.'));
     P1.push(H2('타이머는 이렇게') +
       P('"1초 지연" 같은 게 나오면 타이머를 씁니다. 지연을 시작시킬 스텝이 타이머를 켜고, <b>타이머가 다 되면 그게 다음 스텝의 전환조건</b>이 됩니다.') +
       `<div style="text-align:center; color:var(--acc); margin:10px 0">A4 → TON T3 (PT = T#2S) &nbsp;⇒&nbsp; A5의 전환조건 = <b>T3.Q</b></div>` +
@@ -1557,13 +1557,13 @@ const LAMP1 = {
   1:  { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
   2:  { seq2:true,         clearY:'cont' },
   3:  {                    matY:{metal:'b05', non:'on' }, clearY:'cycle' },
-  4:  { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  4:  { mag:'on',          matY:{metal:'on',  non:'b05'} },
   5:  {                    matG:{metal:'b10', non:'on' }, clearG:'cycle' },
-  6:  {                    matG:{metal:'b10', non:'on' }, clearG:'cycle', countY:{metric:'non', rules:[[2,'b10']]}, clearY:'cont' },
+  6:  {                    matG:{metal:'b10', non:'on' }, clearG:'cycle', countY:{metric:'non', rules:[[2,'b10']]} },
   7:  { countY:{metric:'metal', rules:[[2,'on']]}, clearY:'cont', conv:{lamp:'PL3', mode:'b05'} },
   8:  { mag:'on', conv:{lamp:'PL1', mode:'on'}, countY:{metric:'non', rules:[[2,'on']]}, clearY:'cont' },
   9:  { conv:{lamp:'PL2', mode:'b05'} },
-  10: {                    matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
+  10: { magBlinkEmpty:true, matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
   11: { mag:'on',          countY:{metric:'metal', rules:[[2,'on']]}, clearY:'cont' },
   12: { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
   13: { mag:'on',          matY:{metal:'on',  non:'b05'}, clearY:'cycle' },
@@ -1571,7 +1571,7 @@ const LAMP1 = {
   15: {                    matY:{metal:'b05', non:'on' }, clearY:'cycle' },
   16: { greenOnBelt:true,  matY:{metal:'b05', non:'on' }, clearY:'cycle' },
   17: { countG:{metric:'non', rules:[[2,'on'],[1,'b10']]}, clearG:'cont' },
-  18: { countY:{metric:'non', rules:[[2,'b05'],[1,'on']]}, clearY:'cont', countG:{metric:'metal', rules:[[1,'b10']]}, clearG:'cont' },
+  18: { countY:{metric:'non', rules:[[2,'b05'],[1,'on']]}, clearY:'cont', p18G:true, clearG:'cont' },
   19: { drill:{lamp:'PL3', mode:'on'}, matY:{metal:'b05', non:'on'}, clearY:'cycle' },
   20: { magBlinkEmpty:true, matY:{metal:'on', non:'b05'}, clearY:'cycle' },
 };
@@ -1588,6 +1588,8 @@ function lamp1Material(mat, ctx){
   if(r.matG) setLamp('PL3', metal ? r.matG.metal : r.matG.non);
   if(r.countY) setLamp('PL2', countMode(r.countY, ctx));
   if(r.countG) setLamp('PL3', countMode(r.countG, ctx));
+  /* 18번: 금속 1개 이상이면 녹색 점멸이 비금속 개수 규칙보다 우선, 아니면 비금속 2개 이상 점등 */
+  if(r.p18G) setLamp('PL3', ctx.cntMetal>=1 ? 'b10' : (ctx.cntNon>=2 ? 'on' : 'off'));
   if(r.seq2){                       // 2번: 누적 개수 1소등/2황/3녹/4↑황녹
     const n = ctx.cntMetal + ctx.cntNon;
     setLamp('PL2', (n===2 || n>=4) ? 'on' : 'off');
@@ -1703,13 +1705,16 @@ async function runCycle(mode){
       : `<div class="banner warn"><b>돌기는 했지만</b> 공정순서도와 순서가 다릅니다. 조립 모드에서 정확한 순서를 맞춰 보세요.</div>`;
   }
 }
+/* 16·17번은 비상정지 시 적색램프가 점멸이 아니라 고정 점등(원본 부가조건3 원문 기준) */
+const ESTOP_RED_STEADY = new Set([16, 17]);
 function estop(){
   if(!running) return;
   abortRun = true;
   S.motor.drill = 0; S.motor.conv = 0;
   setLamp('PL2','off'); setLamp('PL3','off');       // 녹색·황색 소등
-  setLamp('PL1', prob.id===2 ? 'b10' : 'b05');      // 적색 점멸 (2번은 1초)
-  log('■ 비상정지 — 가공모터·컨베이어 정지, 녹색·황색 소등, 적색 점멸', 'e');
+  const steady = ESTOP_RED_STEADY.has(prob.id);
+  setLamp('PL1', steady ? 'on' : (prob.id===2 ? 'b10' : 'b05'));   // 적색 점등/점멸 (2번은 1초)
+  log(`■ 비상정지 — 가공모터·컨베이어 정지, 녹색·황색 소등, 적색 ${steady?'점등':'점멸'}`, 'e');
   $('simBanner').innerHTML = `<div class="banner warn">비상정지(부가조건3): ${prob.cond.add3}</div>`;
   setTimeout(()=>{ setLamp('PL1','off'); }, 4000);
 }
