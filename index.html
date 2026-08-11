@@ -156,7 +156,7 @@
 
     <div class="card">
       <div class="row" style="justify-content:space-between; margin-bottom:10px">
-        <b>1. 공개문제 선택</b><span class="pill" id="pilotNote">파일럿 3문제</span>
+        <b>1. 공개문제 선택</b><span class="pill" id="pilotNote"></span>
       </div>
       <div class="grid" id="probGrid"></div>
     </div>
@@ -172,6 +172,11 @@
         기초(전기기호·자기유지·타이머·XG5000)가 아직이면
         <a href="https://hongyul67-cpu.github.io/sequence-plc-master/" target="_blank" style="color:var(--acc)">시퀀스·PLC 마스터</a>를 먼저 하세요.
       </div>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <a href="teach.html" style="color:var(--dim); font-size:.85rem; text-decoration:none">
+        👩‍🏫 선생님용 수업 도구 (시연 · 모둠대결 · 뽑기 · 학습지 인쇄) →</a>
     </div>
   </section>
 
@@ -673,6 +678,7 @@ function learnToTest(){ $('learn').classList.add('hide'); startStage(learnKey); 
 
 /* ===================== 시작화면 ===================== */
 function renderHome(){
+  $('pilotNote').textContent = `공개문제 ${PROBLEMS.length}문제`;
   $('probGrid').innerHTML = PROBLEMS.map(p =>
     `<button class="pcard ${p.id===prob.id?'on':''}" onclick="pickProb(${p.id})">
        <b>${p.name}</b>

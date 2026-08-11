@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PLC제어작업 · 수업 도구 (교사용)</title>
+<style>
+  :root{
+    --bg:#0d1b2a; --bg2:#122a41; --panel:#15304a; --line:#2f5c85;
+    --ink:#e8f4ff; --dim:#8fb6d6; --acc:#38bdf8; --acc2:#0ea5e9;
+    --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --gold:#fbbf24;
+    --metal:#94a3b8; --nonmetal:#a78bfa;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Pretendard","맑은 고딕","Malgun Gothic",system-ui,sans-serif; line-height:1.5}
+  button{font-family:inherit; cursor:pointer; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg2); color:var(--ink); padding:8px 13px; font-size:.92rem}
+  button:hover:not(:disabled){border-color:var(--acc)}
+  button:disabled{opacity:.4; cursor:default}
+  .btn-main{background:var(--acc2); border-color:var(--acc); font-weight:700}
+  .btn-main:hover:not(:disabled){background:var(--acc)}
+  select,input{font-family:inherit; background:var(--bg2); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:.92rem}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  .hide{display:none !important}
+  a{color:var(--acc)}
+
+  /* ── 상단바 ── */
+  .topbar{display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20; flex-wrap:wrap}
+  .tab{font-weight:700}
+  .tab.on{background:var(--acc2); border-color:var(--acc)}
+  .topbar .ttl{font-weight:700; color:var(--gold); margin-right:6px}
+
+  /* ── 시연 모드 ── */
+  .demo-wrap{display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:12px; padding:12px}
+  @media(max-width:900px){ .demo-wrap{grid-template-columns:1fr} }
+  .flowcol{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px;
+    max-height:calc(100vh - 150px); overflow-y:auto}
+  .flowhead{font-weight:700; margin-bottom:8px; color:var(--dim); font-size:.9rem}
+  .fb{display:flex; gap:8px; align-items:center; padding:7px 10px; margin-bottom:4px;
+    border:1px solid var(--line); border-radius:8px; background:var(--bg2);
+    font-size:clamp(13px,1.05vw,17px); color:var(--dim)}
+  .fb .n{min-width:22px; text-align:right; color:var(--dim); font-size:.8em}
+  .fb.past{opacity:.5}
+  .fb.past .n::after{content:' ✓'; color:var(--ok)}
+  .fb.now{border-color:var(--gold); background:rgba(251,191,36,.14); color:var(--ink);
+    font-weight:700; box-shadow:0 0 0 2px rgba(251,191,36,.25)}
+  .fb.dec{border-style:dashed}
+  .stagebox{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:6px}
+  .stagebox svg{width:100%; height:auto; display:block}
+  .nowcard{background:var(--panel); border:1px solid var(--gold); border-radius:12px;
+    padding:12px 16px; margin-top:10px}
+  .nowcard .lab{color:var(--gold); font-size:clamp(12px,1vw,15px); font-weight:700}
+  .nowcard .big{font-size:clamp(22px,2.7vw,44px); font-weight:800; line-height:1.25; margin:2px 0 6px}
+  .nowcard .why{font-size:clamp(14px,1.3vw,21px); color:var(--dim)}
+  .nowcard .sig{font-size:clamp(14px,1.3vw,21px); color:var(--acc); margin-top:4px}
+  .rungbox{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:10px; margin-top:10px}
+  .rungbox svg{width:100%; height:auto; max-width:820px; display:block; margin:0 auto}
+  .rungcap{color:var(--dim); font-size:clamp(12px,1vw,15px); margin-bottom:4px}
+  .demobar{position:sticky; bottom:0; background:var(--panel); border-top:1px solid var(--line);
+    padding:8px 14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; z-index:15}
+  .keys{color:var(--dim); font-size:.8rem; margin-left:auto}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .seg button{border:none; border-radius:0; padding:7px 12px}
+  .seg button.on{background:var(--acc2); font-weight:700}
+
+  /* ── 모둠 대결 ── */
+  .qwrap{padding:14px; max-width:1200px; margin:0 auto}
+  .scoreboard{display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); margin-bottom:14px}
+  .team{background:var(--panel); border:2px solid var(--line); border-radius:12px; padding:10px; text-align:center}
+  .team.lead{border-color:var(--gold); box-shadow:0 0 0 2px rgba(251,191,36,.25)}
+  .team .nm{font-weight:700; font-size:clamp(14px,1.2vw,19px)}
+  .team .sc{font-size:clamp(30px,3.4vw,54px); font-weight:800; color:var(--gold); line-height:1.1}
+  .team .row{justify-content:center; margin-top:4px}
+  .team button{padding:4px 12px; font-size:1rem}
+  .qcard{background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:20px; min-height:220px; display:flex; flex-direction:column; justify-content:center}
+  .qtag{color:var(--acc); font-weight:700; font-size:clamp(12px,1vw,16px)}
+  .qtext{font-size:clamp(20px,2.6vw,42px); font-weight:800; line-height:1.35; margin:8px 0}
+  .qans{font-size:clamp(18px,2.2vw,36px); font-weight:800; color:var(--gold);
+    border-top:1px dashed var(--line); padding-top:12px; margin-top:8px}
+  .qhint{color:var(--dim); font-size:clamp(13px,1.1vw,18px)}
+
+  /* ── 뽑기 ── */
+  .pickwrap{padding:14px; max-width:1000px; margin:0 auto}
+  .roul{background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:26px; text-align:center; margin-bottom:12px}
+  .roul .out{font-size:clamp(56px,13vw,190px); font-weight:800; color:var(--gold); line-height:1.05}
+  .roul .out.spin{color:var(--acc); opacity:.75}
+  .roul .cap{color:var(--dim); font-size:clamp(13px,1.2vw,18px)}
+  .hist{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; justify-content:center}
+  .hist span{background:var(--bg2); border:1px solid var(--line); border-radius:99px;
+    padding:2px 10px; font-size:.85rem; color:var(--dim)}
+
+  /* ── 학습지 ── */
+  .sheetwrap{padding:14px; max-width:1000px; margin:0 auto}
+  .sheet{background:#fff; color:#000; border-radius:8px; padding:16mm 14mm; margin-top:12px;
+    font-size:12pt; line-height:1.55}
+  .sheet h2{font-size:16pt; margin:0 0 2mm; text-align:center}
+  .sheet .meta{display:flex; gap:8mm; justify-content:center; color:#333; font-size:10.5pt;
+    border-bottom:1.5px solid #000; padding-bottom:3mm; margin-bottom:5mm}
+  .sheet h3{font-size:12.5pt; margin:6mm 0 2mm; border-left:4px solid #000; padding-left:3mm}
+  .sheet table{width:100%; border-collapse:collapse; margin:2mm 0}
+  .sheet th,.sheet td{border:1px solid #444; padding:1.6mm 2mm; font-size:10.5pt}
+  .sheet th{background:#eee}
+  .sheet .bank{border:1px dashed #666; padding:2.5mm; font-size:10.5pt; margin:2mm 0}
+  .sheet .blank{color:#fff}                 /* 학생용: 안 보이게 */
+  .sheet.ans .blank{color:#c00; font-weight:700}
+  .sheet ol{margin:2mm 0; padding-left:6mm}
+  .sheet .fl{border:1px solid #444; padding:1.5mm 2.5mm; margin-bottom:1.2mm; font-size:10.5pt}
+  .sheet .note{font-size:10pt; color:#333}
+  @media print{
+    body{background:#fff}
+    .noprint{display:none !important}
+    /* 어느 탭에 있든 Ctrl+P를 누르면 학습지가 나오게 한다 */
+    #demo,#quiz,#pick{display:none !important}
+    #sheet{display:block !important}
+    .sheetwrap{padding:0; max-width:none}
+    .sheet{border-radius:0; margin:0; padding:0}
+    @page{size:A4; margin:14mm}
+    .sheet h3{page-break-after:avoid}
+    .sheet table{page-break-inside:auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar noprint">
+  <div class="row">
+    <span class="ttl">👩‍🏫 수업 도구</span>
+    <button class="tab on" data-t="demo">🖥 시연</button>
+    <button class="tab" data-t="quiz">🏁 모둠대결</button>
+    <button class="tab" data-t="pick">🎲 뽑기</button>
+    <button class="tab" data-t="sheet">🖨 학습지</button>
+  </div>
+  <div class="row">
+    <select id="probSel" onchange="changeProb(this.value)"></select>
+    <button onclick="toggleFull()">⛶ 전체화면</button>
+    <a href="index.html">학생용 앱 →</a>
+  </div>
+</div>
+
+<!-- ══════════ 시연 모드 ══════════ -->
+<section id="demo">
+  <div class="demo-wrap">
+    <aside class="flowcol">
+      <div class="flowhead">공정순서도 · <span id="demoName"></span></div>
+      <div id="flowList"></div>
+    </aside>
+    <main>
+      <div class="stagebox" id="stageBox"></div>
+      <div class="nowcard" id="nowCard"></div>
+      <div class="rungbox" id="rungBox"></div>
+    </main>
+  </div>
+  <div class="demobar noprint">
+    <button onclick="demoGo(-1)">◀ 이전</button>
+    <button class="btn-main" onclick="demoGo(1)">다음 ▶</button>
+    <button id="btnPlay" onclick="demoPlay()">▶ 자동재생</button>
+    <button onclick="demoReset()">↺ 처음</button>
+    <span class="seg" style="margin-left:6px">
+      <button id="matM" onclick="setMat('금속')">금속</button>
+      <button id="matN" onclick="setMat('비금속')">비금속</button>
+    </span>
+    <button id="btnHide" onclick="toggleHide()">🙈 조건 가리기</button>
+    <span class="keys">← → 이동 · Space 재생 · H 조건가리기 · F 전체화면</span>
+  </div>
+</section>
+
+<!-- ══════════ 모둠 대결 ══════════ -->
+<section id="quiz" class="hide">
+  <div class="qwrap">
+    <div class="row noprint" style="margin-bottom:10px">
+      <label>모둠 수
+        <select id="teamN" onchange="setTeams(+this.value)">
+          <option>2</option><option selected>4</option><option>3</option>
+          <option>5</option><option>6</option>
+        </select>
+      </label>
+      <label>출제 범위
+        <select id="qScope">
+          <option value="one">지금 선택한 문제만</option>
+          <option value="all" selected>공개문제 전체(랜덤)</option>
+        </select>
+      </label>
+      <button onclick="resetScores()">점수 초기화</button>
+    </div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <div class="qcard" id="qCard">
+      <div class="qhint">아래 <b>문제 뽑기</b>를 누르면 화면에 문제가 크게 나옵니다.<br>
+        모둠이 답을 적으면 <b>정답 공개</b>를 누르고, 맞힌 모둠에 <b>+1</b>을 주세요.</div>
+    </div>
+    <div class="row noprint" style="margin-top:12px">
+      <button class="btn-main" onclick="nextQuiz()">🎯 문제 뽑기</button>
+      <button id="btnReveal" onclick="revealQuiz()" disabled>💡 정답 공개</button>
+      <span class="keys">Q 문제뽑기 · A 정답공개</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 뽑기 ══════════ -->
+<section id="pick" class="hide">
+  <div class="pickwrap">
+    <div class="roul">
+      <div class="cap" id="pickCap">학생 번호 뽑기</div>
+      <div class="out" id="pickOut">–</div>
+      <div class="hist" id="pickHist"></div>
+    </div>
+    <div class="row noprint" style="justify-content:center">
+      <button class="btn-main" onclick="spin('student')">🎲 학생 뽑기</button>
+      <button class="btn-main" onclick="spin('problem')">📄 문제 뽑기</button>
+      <button onclick="clearHist()">이력 지우기</button>
+    </div>
+    <div class="row noprint" style="justify-content:center; margin-top:12px">
+      <label>학생 수 <input id="stuN" type="number" value="20" min="1" max="60" style="width:70px"></label>
+      <label>제외 번호 <input id="stuSkip" placeholder="예: 3,7,15" style="width:150px"></label>
+      <label><input type="checkbox" id="noRepeat" checked> 뽑은 번호 다시 안 뽑기</label>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 학습지 ══════════ -->
+<section id="sheet" class="hide">
+  <div class="sheetwrap">
+    <div class="row noprint">
+      <b>포함할 항목</b>
+      <label><input type="checkbox" class="sopt" value="flow" checked> 공정순서도 채우기</label>
+      <label><input type="checkbox" class="sopt" value="step" checked> A스텝 표</label>
+      <label><input type="checkbox" class="sopt" value="io" checked> I/O 할당표</label>
+      <label><input type="checkbox" class="sopt" value="cond" checked> 조건 요약</label>
+    </div>
+    <div class="row noprint" style="margin-top:8px">
+      <label><input type="checkbox" id="ansMode" onchange="drawSheet()"> ✅ 교사용 정답본</label>
+      <button class="btn-main" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+      <span class="keys">인쇄 대화상자에서 '배경 그래픽'을 꺼면 잉크가 절약됩니다</span>
+    </div>
+    <div id="sheetBody"></div>
+  </div>
+</section>
+
+<script src="data.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   PLC제어작업 수업 도구 (교사용)
+   데이터는 학생용 앱과 같은 data.js를 그대로 쓴다 —
+   조건이 바뀌면 두 화면이 함께 바뀌도록(자료가 갈라지지 않게).
+   ══════════════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+let prob = PROBLEMS[0];
+
+/* ── 공통 표기 헬퍼 (학생용 앱과 같은 규칙) ───────────────── */
+const isB   = c => c.charAt(0) === '!';
+const bare  = c => isB(c) ? c.slice(1) : c;
+const condTxt = c => isB(c) ? bare(c) + '̄' : c;      // S3 → S3̄
+const condsTxt = a => a.map(condTxt).join(' · ');
+const condName = c => (SIGNALS[bare(c)] || '') + (isB(c) ? ' 아님' : '');
+function driveText(s){
+  const parts = (s.drive || []).slice();
+  if(s.timer) parts.push(`타이머 ${s.timer.name}(${s.timer.pt}) 기동`);
+  return parts.length ? parts.join(' + ') : '없음';
+}
+const contTxt = p => p.contCycles ? `${p.contCycles}사이클 연속 작동 후 종료`
+  : (p.contUntil ? p.contUntil : '공작물이 모두 소진될 때까지');
+const startTxt = p => p.contStart || 'PB3 스위치';
+
+/* 순서도에 나오지만 BLOCKS에 없는 두 칸(판별·컨베이어 정지) */
+const PSEUDO = { judge:{t:'공작물 재질 판별'}, conv_stop:{t:'컨베이어 정지'} };
+const blk = k => BLOCKS[k] || BRANCH_BLOCKS[k] || PSEUDO[k] || {t:k};
+const blockTitle = k => blk(k).t;
+
+/* ── 문제 선택 ─────────────────────────────────────────── */
+function fillProbSel(){
+  $('probSel').innerHTML = PROBLEMS.map(p =>
+    `<option value="${p.id}">${p.name}</option>`).join('');
+}
+function changeProb(id){
+  prob = PROBLEMS.find(p => p.id === +id);
+  demoReset(); drawSheet();
+}
+
+/* ══════════════════════════════════════════════════════════
+   1) 시연 모드 — 순서도를 한 칸씩 넘기며 설비가 그대로 움직인다
+   ══════════════════════════════════════════════════════════ */
+let tl = [], tlIdx = 0, demoMat = '금속', hideCond = false, playTimer = null;
+
+/* 재질 분기까지 포함한 '오늘 보여줄 한 사이클' */
+function buildTimeline(p, mat){
+  const t = p.seq.slice();
+  t.push('judge');
+  if(mat === p.ejectMaterial) t.push('ej_fwd','ej_box','ej_bwd');
+  else                        t.push('keep_box');
+  t.push('conv_stop');
+  return t;
+}
+
+/* idx 시점의 설비 상태 — 0부터 다시 계산한다(되감기해도 항상 같은 그림) */
+function stateAt(idx){
+  const S = { cyl:{sup:0,mach:0,push:0,ej:0}, motor:{drill:0,conv:0},
+              onTable:null, belt:null, boxes:{eject:0,keep:0},
+              mag:Math.max(prob.minWork,3), judged:false };
+  for(let i=0; i<=idx && i<tl.length; i++){
+    const k = tl[i];
+    if(k==='sup_fwd'){ S.cyl.sup=1; S.onTable=demoMat; S.mag--; }
+    else if(k==='sup_bwd')  S.cyl.sup=0;
+    else if(k==='mach_down')S.cyl.mach=1;
+    else if(k==='mach_up')  S.cyl.mach=0;
+    else if(k==='drill_run')S.motor.drill=1;
+    else if(k==='drill_stop')S.motor.drill=0;
+    else if(k==='push_fwd'){ S.cyl.push=1; if(S.onTable){ S.belt='in'; S.onTable=null; } }
+    else if(k==='push_bwd') S.cyl.push=0;
+    else if(k==='conv_run') S.motor.conv=1;
+    else if(k==='judge'){   S.judged=true; if(S.belt) S.belt='sense'; }
+    else if(k==='ej_fwd'){  S.cyl.ej=1; S.belt='ejx'; }
+    else if(k==='ej_box'){  S.boxes.eject++; S.belt=null; }
+    else if(k==='ej_bwd')   S.cyl.ej=0;
+    else if(k==='keep_box'){ S.boxes.keep++; S.belt=null; }
+    else if(k==='conv_stop')S.motor.conv=0;
+  }
+  return S;
+}
+
+/* 지금 칸이 건드리는 장치 — 설비 그림에서 금색으로 강조 */
+const DEV_OF = { sup_fwd:'sup', sup_bwd:'sup', mach_down:'mach', mach_up:'mach',
+  drill_run:'mach', drill_stop:'mach', push_fwd:'push', push_bwd:'push',
+  conv_run:'conv', conv_stop:'conv', ej_fwd:'ej', ej_box:'ej', ej_bwd:'ej',
+  keep_box:'keep', judge:'sensor' };
+
+const GEO = { magX:150, magY:120, machX:310, machY:120,
+  beltY:252, beltX0:270, beltX1:840, inX:310, senseX:500, ejX:640, keepX:812 };
+
+function workDot(x, y, mat, r){
+  const c = mat==='금속' ? '#94a3b8' : '#a78bfa';
+  return `<circle cx="${x}" cy="${y}" r="${r||15}" fill="${c}" stroke="#0a1622" stroke-width="2"/>
+    <text x="${x}" y="${y+6}" font-size="15" fill="#0a1622" text-anchor="middle" font-weight="800">${mat[0]}</text>`;
+}
+/* 실린더 — dir 1=오른쪽, 2=아래 */
+function cyl(x, y, len, dir, pos, label, hot){
+  const st = hot ? '#fbbf24' : '#7aa7c7', w = hot ? 4 : 3, ext = pos*len;
+  if(dir===1) return `<g>
+    <rect x="${x-56}" y="${y-16}" width="56" height="32" rx="4" fill="#1e3a52" stroke="${st}" stroke-width="${hot?2.5:1.5}"/>
+    <line x1="${x}" y1="${y}" x2="${x+ext}" y2="${y}" stroke="${st}" stroke-width="${w}"/>
+    <rect x="${x+ext-4}" y="${y-13}" width="8" height="26" rx="2" fill="${hot?'#fbbf24':'#9fd0ea'}"/>
+    <text x="${x-56}" y="${y-23}" fill="${hot?'#fbbf24':'#8fb6d6'}" font-size="16" font-weight="${hot?700:400}">${label}</text></g>`;
+  return `<g>
+    <rect x="${x-16}" y="${y-56}" width="32" height="56" rx="4" fill="#1e3a52" stroke="${st}" stroke-width="${hot?2.5:1.5}"/>
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y+ext}" stroke="${st}" stroke-width="${w}"/>
+    <rect x="${x-13}" y="${y+ext-4}" width="26" height="8" rx="2" fill="${hot?'#fbbf24':'#9fd0ea'}"/>
+    <text x="${x+22}" y="${y-38}" fill="${hot?'#fbbf24':'#8fb6d6'}" font-size="16" font-weight="${hot?700:400}">${label}</text></g>`;
+}
+/* 프로젝터용 설비 그림 — 학생용보다 글씨를 크게 키웠다 */
+function stageSVG(S, hot){
+  const G = GEO;
+  let s = `<svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg">`;
+  // 컨베이어
+  const cvOn = S.motor.conv, cvHot = hot==='conv';
+  s += `<rect x="${G.beltX0}" y="${G.beltY-24}" width="${G.beltX1-G.beltX0}" height="48" rx="7"
+      fill="#16283a" stroke="${cvHot?'#fbbf24':'#7aa7c7'}" stroke-width="${cvHot?3:1.5}"/>`;
+  for(let x=G.beltX0+12; x<G.beltX1; x+=28)
+    s += `<line x1="${x}" y1="${G.beltY-24}" x2="${x}" y2="${G.beltY+24}"
+          stroke="${cvOn?'#38bdf8':'#254157'}" stroke-width="2"/>`;
+  s += `<text x="${G.beltX0+8}" y="${G.beltY+46}" fill="${cvOn?'#38bdf8':'#8fb6d6'}" font-size="17"
+      font-weight="${cvOn?700:400}">컨베이어 M2 ${cvOn?'▶ 구동 중':'정지'}</text>`;
+  // 매거진
+  s += `<rect x="${G.magX-24}" y="18" width="48" height="120" fill="none" stroke="#7aa7c7" stroke-dasharray="5 4"/>
+        <text x="${G.magX-40}" y="12" fill="#8fb6d6" font-size="16">매거진 S1 (${S.mag}개)</text>`;
+  for(let i=0;i<Math.min(S.mag,4);i++) s += workDot(G.magX, G.magY-i*27, i%2?'비금속':'금속', 13);
+  /* 실린더를 먼저(뒤에) 그린다 — 로드가 가공 테이블·드릴을 덮으면
+     "드릴이 로드에 가려" 수업 중에 헷갈리기 때문 */
+  s += cyl(56, G.magY, 226, 1, S.cyl.sup, 'CYL1 공급 SOL1/2', hot==='sup');
+  /* 송출실린더는 가공위치 위에서 아래(컨베이어)로 밀어낸다 —
+     몸통·라벨이 화면 위로 잘리지 않게 y를 내려서 배치한다 */
+  s += cyl(G.machX, 62, 168, 2, S.cyl.push, 'CYL3 송출 SOL4', hot==='push');
+  s += cyl(G.ejX, 152, 156, 2, S.cyl.ej, 'CYL4 배출 SOL5', hot==='ej');
+  // 가공 테이블 + 드릴 (실린더 로드 위에 얹는다)
+  s += `<rect x="${G.machX-30}" y="${G.machY-30}" width="60" height="60" rx="5" fill="#16283a" stroke="#7aa7c7"/>`;
+  const mHot = hot==='mach', dR = 16 + S.cyl.mach*9;
+  s += `<circle cx="${G.machX}" cy="${G.machY}" r="${dR}" fill="#16283a"
+      stroke="${mHot?'#fbbf24':(S.motor.drill?'#38bdf8':'#7aa7c7')}" stroke-width="${S.cyl.mach?5:2.5}"/>
+    <text x="${G.machX+38}" y="${G.machY-34}" fill="${mHot?'#fbbf24':'#8fb6d6'}" font-size="16"
+      font-weight="${mHot?700:400}">CYL2 가공 SOL3 · 드릴 M1</text>
+    <text x="${G.machX+38}" y="${G.machY-13}" fill="${S.cyl.mach?'#fbbf24':'#8fb6d6'}" font-size="16">
+      ${S.cyl.mach?'하강':'상승'} · 드릴 ${S.motor.drill?'회전':'정지'}</text>`;
+  // 센서
+  const sHot = hot==='sensor';
+  s += `<circle cx="${G.senseX}" cy="${G.beltY-40}" r="7" fill="${sHot?'#fbbf24':'#94a3b8'}"/>
+    <circle cx="${G.senseX+34}" cy="${G.beltY-40}" r="7" fill="${sHot?'#fbbf24':'#a78bfa'}"/>
+    <text x="${G.senseX-46}" y="${G.beltY-52}" fill="${sHot?'#fbbf24':'#8fb6d6'}" font-size="15"
+      font-weight="${sHot?700:400}">S3 금속</text>
+    <text x="${G.senseX+46}" y="${G.beltY-52}" fill="${sHot?'#fbbf24':'#8fb6d6'}" font-size="15">S4 전부</text>`;
+  // 상자
+  s += `<rect x="${G.ejX-34}" y="330" width="68" height="52" fill="none" stroke="${hot==='ej'?'#fbbf24':'#7aa7c7'}" stroke-width="2"/>
+    <text x="${G.ejX-52}" y="400" fill="#8fb6d6" font-size="16">배출상자 ${S.boxes.eject}</text>
+    <rect x="${G.keepX-20}" y="${G.beltY+36}" width="64" height="50" fill="none" stroke="${hot==='keep'?'#fbbf24':'#7aa7c7'}" stroke-width="2"/>
+    <text x="${G.keepX-30}" y="${G.beltY+104}" fill="#8fb6d6" font-size="16">저장상자 ${S.boxes.keep}</text>`;
+  // 공작물
+  if(S.onTable) s += workDot(G.machX, G.machY, S.onTable);
+  if(S.belt){
+    const bx = S.belt==='in' ? G.inX : S.belt==='sense' ? G.senseX : G.ejX;
+    const by = S.belt==='ejx' ? 300 : G.beltY;
+    s += workDot(bx, by, demoMat);
+  }
+  // 판별 결과 말풍선
+  if(S.judged){
+    const go = demoMat === prob.ejectMaterial ? '배출상자로' : '저장상자로';
+    s += `<rect x="${G.senseX-80}" y="18" width="300" height="46" rx="8" fill="#15304a" stroke="#fbbf24" stroke-width="2"/>
+      <text x="${G.senseX-66}" y="48" fill="#fbbf24" font-size="20" font-weight="700">${demoMat} → ${go}</text>`;
+  }
+  return s + `</svg>`;
+}
+
+/* 큰 래더 한 줄 (프로젝터용) */
+function rungBig(st, prevLabel, isReset, hideC){
+  const conds = hideC ? ['?'] : st.cond;
+  const col = hideC ? '#f59e0b' : '#38bdf8';
+  const y = 62, yh = 126, railL = 24, first = 118, gap = 132;
+  const xs = conds.map((_,i) => first + i*gap);
+  const bIn = first - 46, bOut = xs[xs.length-1] + 46;
+  const prevX = bOut + 84, coilX = prevX + 124, railR = coilX + 52, W = railR + 24;
+  const contact = (cx, label, b, c) => `
+    <line x1="${cx-13}" y1="${y-17}" x2="${cx-13}" y2="${y+17}" stroke="${c}" stroke-width="4"/>
+    <line x1="${cx+13}" y1="${y-17}" x2="${cx+13}" y2="${y+17}" stroke="${c}" stroke-width="4"/>
+    ${b?`<line x1="${cx-11}" y1="${y+17}" x2="${cx+11}" y2="${y-17}" stroke="${c}" stroke-width="3"/>`:''}
+    <text x="${cx}" y="${y-26}" fill="${c}" font-size="21" text-anchor="middle" font-weight="700">${label}</text>`;
+  let s = `<svg viewBox="0 0 ${W} 160" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${railL}" y1="18" x2="${railL}" y2="150" stroke="#7aa7c7" stroke-width="2.5"/>
+    <line x1="${railR}" y1="18" x2="${railR}" y2="150" stroke="#7aa7c7" stroke-width="2.5"/>
+    <line x1="${railL}" y1="${y}" x2="${coilX-18}" y2="${y}" stroke="#7aa7c7" stroke-width="2.5"/>
+    <line x1="${coilX+18}" y1="${y}" x2="${railR}" y2="${y}" stroke="#7aa7c7" stroke-width="2.5"/>`;
+  xs.forEach((cx,i) => { s += contact(cx, hideC ? '?' : bare(conds[i]), !hideC && isB(conds[i]), col); });
+  s += contact(prevX, prevLabel, isReset, '#38bdf8');
+  s += `<circle cx="${coilX}" cy="${y}" r="18" fill="none" stroke="#7aa7c7" stroke-width="2.5"/>
+    <text x="${coilX}" y="${y-27}" fill="#e8f4ff" font-size="21" text-anchor="middle" font-weight="700">${st.id}</text>`;
+  s += `<line x1="${bIn}" y1="${y}" x2="${bIn}" y2="${yh}" stroke="#7aa7c7" stroke-width="2.5"/>
+    <line x1="${bIn}" y1="${yh}" x2="${bOut}" y2="${yh}" stroke="#7aa7c7" stroke-width="2.5"/>
+    <line x1="${bOut}" y1="${yh}" x2="${bOut}" y2="${y}" stroke="#7aa7c7" stroke-width="2.5"/>`;
+  const mid = (bIn+bOut)/2;
+  s += `<line x1="${mid-13}" y1="${yh-17}" x2="${mid-13}" y2="${yh+17}" stroke="#38bdf8" stroke-width="4"/>
+    <line x1="${mid+13}" y1="${yh-17}" x2="${mid+13}" y2="${yh+17}" stroke="#38bdf8" stroke-width="4"/>
+    <text x="${mid}" y="${yh+40}" fill="#38bdf8" font-size="19" text-anchor="middle">${st.id}</text>`;
+  return s + `</svg>`;
+}
+
+/* 지금 칸을 담당하는 A스텝 찾기 (분기 칸은 순서대로 뒤쪽 스텝) */
+function stepForBlock(key){
+  const arr = STEPS[prob.id] || [];
+  const byFlow = arr.find(s => (s.flow||[]).includes(key));
+  if(byFlow) return byFlow;
+  const n = arr.length;
+  if(key==='judge' || key==='ej_fwd') return arr[n-3];   // A10 판별→배출 전진
+  if(key==='ej_bwd')                  return arr[n-2];   // A11 배출 후진
+  if(key==='conv_stop')               return arr[n-1];   // A12 컨베이어 정지
+  return null;
+}
+
+function drawFlowList(){
+  $('flowList').innerHTML = tl.map((k,i) => {
+    const cls = i===tlIdx ? 'now' : (i<tlIdx ? 'past' : '');
+    const dec = (k==='judge') ? ' dec' : '';
+    return `<div class="fb ${cls}${dec}" data-i="${i}" onclick="demoTo(${i})">
+      <span class="n">${i+1}</span><span>${blockTitle(k)}</span></div>`;
+  }).join('');
+  const el = $('flowList').querySelector('.fb.now');
+  if(el) el.scrollIntoView({block:'center', behavior:'smooth'});
+}
+
+function drawDemo(){
+  const key = tl[tlIdx], b = blk(key);
+  const S = stateAt(tlIdx);
+  $('stageBox').innerHTML = stageSVG(S, DEV_OF[key]);
+  drawFlowList();
+
+  // 지금 무엇을 하는가
+  let why = '', sig = '';
+  if(key==='sup_fwd'){ why='매거진 맨 아래 공작물을 가공위치로 밀어 넣습니다.'; }
+  else if(key==='sup_bwd'){ why='다음 공작물이 내려올 수 있도록 원위치로 돌아갑니다.'; }
+  else if(key==='drill_run'){ why='가공(드릴)을 시작하기 위해 모터를 먼저 돌립니다.'; }
+  else if(key==='drill_stop'){ why='가공이 끝났으니 모터를 멈춥니다.'; }
+  else if(key==='mach_down'){ why='드릴을 내려 공작물을 가공합니다.'; }
+  else if(key==='mach_up'){ why='가공이 끝나 드릴을 올립니다. 올라가야 다음 동작에서 부딪히지 않습니다.'; }
+  else if(key==='push_fwd'){ why='가공이 끝난 공작물을 컨베이어로 밀어냅니다.'; }
+  else if(key==='push_bwd'){ why='송출실린더가 원위치로 돌아갑니다.'; }
+  else if(key==='conv_run'){ why='컨베이어를 돌려 공작물을 센서 앞으로 보냅니다.'; }
+  else if(key==='judge'){ why=`S3(유도형)이 반응하면 금속, 반응하지 않고 S4만 반응하면 비금속입니다. 이 문제는 <b style="color:var(--gold)">${prob.ejectMaterial}</b>을 배출상자로 보냅니다.`; }
+  else if(key==='ej_fwd'){ why='배출 대상이므로 배출실린더로 밀어 냅니다.'; }
+  else if(key==='ej_box'){ why='배출상자에 저장되었습니다.'; }
+  else if(key==='ej_bwd'){ why='배출실린더가 원위치로 돌아갑니다.'; }
+  else if(key==='keep_box'){ why='컨베이어 끝까지 이송되어 저장상자에 저장됩니다.'; }
+  else if(key==='conv_stop'){ why='한 사이클이 끝나 컨베이어를 멈춥니다.'; }
+  else if(b.act==='delay'){ why=`${b.sec}초 동안 기다립니다. 래더에서는 <b>타이머</b>로 만듭니다.`; }
+  if(b.ls) sig = `끝났다는 신호 → <b>${b.ls} ON</b>`;
+  if(b.sol) sig += (sig?' · ':'') + `출력 <b>${b.sol}</b>`;
+
+  $('nowCard').innerHTML =
+    `<div class="lab">${tlIdx+1} / ${tl.length} 단계</div>
+     <div class="big">${blockTitle(key)}</div>
+     <div class="why">${why}</div>
+     ${sig ? `<div class="sig">${sig}</div>` : ''}`;
+
+  // 래더
+  const st = stepForBlock(key), arr = STEPS[prob.id] || [];
+  if(st){
+    const i = arr.indexOf(st), isReset = i===0;
+    const prevLabel = isReset ? `A${arr.length}` : arr[i-1].id;
+    $('rungBox').innerHTML =
+      `<div class="rungcap">이 동작을 만드는 래더 — <b>${st.id}</b>
+        ${hideCond ? '· <span style="color:var(--warn)">전환조건을 가렸습니다. 학생에게 물어보세요</span>'
+                   : `· 전환조건 ${condsTxt(st.cond)} (${st.cond.map(condName).join(' 그리고 ')})`}
+        · 구동부 ${driveText(st)}</div>` +
+      rungBig(st, prevLabel, isReset, hideCond);
+  } else {
+    $('rungBox').innerHTML = `<div class="rungcap">이 칸은 스텝 하나로 딱 떨어지지 않습니다(저장 동작).</div>`;
+  }
+}
+
+function demoReset(){
+  stopPlay();
+  tl = buildTimeline(prob, demoMat); tlIdx = 0;
+  $('demoName').textContent = prob.name;
+  $('probSel').value = prob.id;
+  $('matM').classList.toggle('on', demoMat==='금속');
+  $('matN').classList.toggle('on', demoMat==='비금속');
+  drawDemo();
+}
+function demoGo(d){ demoTo(tlIdx + d); }
+function demoTo(i){
+  if(i < 0 || i >= tl.length){ if(i>=tl.length) stopPlay(); return; }
+  tlIdx = i; drawDemo();
+}
+function setMat(m){ demoMat = m; demoReset(); }
+function toggleHide(){
+  hideCond = !hideCond;
+  $('btnHide').classList.toggle('btn-main', hideCond);
+  $('btnHide').textContent = hideCond ? '👁 조건 보이기' : '🙈 조건 가리기';
+  drawDemo();
+}
+function demoPlay(){
+  if(playTimer) return stopPlay();
+  $('btnPlay').textContent = '⏸ 멈춤';
+  $('btnPlay').classList.add('btn-main');
+  playTimer = setInterval(() => {
+    if(tlIdx >= tl.length-1) return stopPlay();
+    demoGo(1);
+  }, 1800);
+}
+function stopPlay(){
+  if(playTimer) clearInterval(playTimer);
+  playTimer = null;
+  $('btnPlay').textContent = '▶ 자동재생';
+  $('btnPlay').classList.remove('btn-main');
+}
+
+/* ══════════════════════════════════════════════════════════
+   2) 모둠 대결 — 화면에 문제를 크게, 정답 공개는 교사가
+   ══════════════════════════════════════════════════════════ */
+let teams = [], curQ = null;
+
+function setTeams(n){
+  const old = teams.slice();
+  teams = Array.from({length:n}, (_,i) => ({ nm:(old[i]&&old[i].nm) || `${i+1}모둠`,
+                                             sc:(old[i]&&old[i].sc) || 0 }));
+  drawScores();
+}
+function drawScores(){
+  const max = Math.max(...teams.map(t=>t.sc), 0);
+  $('scoreboard').innerHTML = teams.map((t,i) =>
+    `<div class="team ${t.sc>0&&t.sc===max?'lead':''}">
+       <div class="nm" contenteditable onblur="renameTeam(${i},this.textContent)">${t.nm}</div>
+       <div class="sc">${t.sc}</div>
+       <div class="row">
+         <button onclick="score(${i},1)">+1</button>
+         <button onclick="score(${i},-1)">−</button>
+       </div></div>`).join('');
+}
+function renameTeam(i, v){ teams[i].nm = (v||'').trim() || `${i+1}모둠`; }
+function score(i, d){ teams[i].sc = Math.max(0, teams[i].sc + d); drawScores(); }
+function resetScores(){ teams.forEach(t => t.sc = 0); drawScores(); }
+
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+/* 문제 만들기 — 답이 하나로 딱 떨어지는 것만 낸다 */
+function makeQ(){
+  const p = $('qScope').value==='one' ? prob : pick(PROBLEMS);
+  const steps = STEPS[p.id] || [];
+  const kinds = ['next','cond','drive','add','cont','io','judge'];
+  const kind = pick(kinds);
+
+  if(kind==='next'){
+    const i = Math.floor(Math.random() * (p.seq.length-1));
+    return { tag:`${p.name} · 공정순서도`,
+      q:`「${blockTitle(p.seq[i])}」 다음 순서는?`,
+      a:blockTitle(p.seq[i+1]) };
+  }
+  if(kind==='cond'){
+    const i = 1 + Math.floor(Math.random() * (steps.length-1));
+    const st = steps[i];
+    return { tag:`${p.name} · 전환조건`,
+      q:`${st.id} 스텝의 <b>전환조건</b>은?`,
+      a:`${condsTxt(st.cond)}  (${st.cond.map(condName).join(' 그리고 ')})` };
+  }
+  if(kind==='drive'){
+    const st = pick(steps);
+    return { tag:`${p.name} · 구동부`,
+      q:`${st.id} 스텝이 켜지면 <b>무엇을 구동</b>합니까?`,
+      a:driveText(st) };
+  }
+  if(kind==='add'){
+    const n = pick([1,2,3]);
+    return { tag:`${p.name} · 부가조건 ${n}`,
+      q:`이 문제의 <b>부가조건 ${n}</b>은 무엇입니까?`,
+      a:p.cond['add'+n] };
+  }
+  if(kind==='cont'){
+    return { tag:`${p.name} · 연속동작`,
+      q:`이 문제의 연속동작은 <b>무엇으로 시작</b>해서 <b>언제 끝</b>납니까?`,
+      a:`${startTxt(p)}로 시작 · ${contTxt(p)}` };
+  }
+  if(kind==='judge'){
+    return { tag:`${p.name} · 재질 판별`,
+      q:`이 문제에서 <b>배출상자</b>로 보내는 재질은? 그리고 그때 켜지는 센서는?`,
+      a:`${p.ejectMaterial} — ${p.ejectMaterial==='금속' ? 'S3(유도형) ON' : 'S4만 ON, S3는 OFF'}` };
+  }
+  const io = pick(IO_TABLE.in.concat(IO_TABLE.out));
+  return { tag:'I/O 할당표', q:`<b>${io.sym}</b>은 무엇입니까?`, a:io.fn };
+}
+function nextQuiz(){
+  curQ = makeQ();
+  $('qCard').innerHTML =
+    `<div class="qtag">${curQ.tag}</div>
+     <div class="qtext">${curQ.q}</div>
+     <div class="qhint">모둠별로 답을 적게 한 뒤 <b>정답 공개</b>를 누르세요.</div>`;
+  $('btnReveal').disabled = false;
+}
+function revealQuiz(){
+  if(!curQ) return;
+  $('qCard').innerHTML =
+    `<div class="qtag">${curQ.tag}</div>
+     <div class="qtext">${curQ.q}</div>
+     <div class="qans">${curQ.a}</div>`;
+  $('btnReveal').disabled = true;
+}
+
+/* ══════════════════════════════════════════════════════════
+   3) 뽑기 — 학생 번호 / 공개문제
+   ══════════════════════════════════════════════════════════ */
+let hist = { student:[], problem:[] };
+let spinning = false;
+
+function poolOf(kind){
+  if(kind==='problem'){
+    const all = PROBLEMS.map(p => p.id);
+    return $('noRepeat').checked ? all.filter(v => !hist.problem.includes(v)) : all;
+  }
+  const n = Math.max(1, +$('stuN').value || 20);
+  const skip = ($('stuSkip').value || '').split(/[,\s]+/).map(Number).filter(Boolean);
+  let all = Array.from({length:n}, (_,i) => i+1).filter(v => !skip.includes(v));
+  if($('noRepeat').checked) all = all.filter(v => !hist.student.includes(v));
+  return all;
+}
+function spin(kind){
+  if(spinning) return;
+  const pool = poolOf(kind);
+  $('pickCap').textContent = kind==='problem' ? '오늘 할 공개문제' : '학생 번호 뽑기';
+  if(!pool.length){
+    $('pickOut').textContent = '없음';
+    $('pickOut').classList.remove('spin');
+    $('pickCap').textContent = '남은 대상이 없습니다 — 이력을 지우세요';
+    return;
+  }
+  spinning = true;
+  $('pickOut').classList.add('spin');
+  let n = 0;
+  const iv = setInterval(() => {
+    $('pickOut').textContent = pick(pool);
+    if(++n > 16){
+      clearInterval(iv);
+      const win = pick(pool);
+      $('pickOut').textContent = win;
+      $('pickOut').classList.remove('spin');
+      hist[kind].push(win);
+      drawHist();
+      spinning = false;
+    }
+  }, 70);
+}
+function drawHist(){
+  const s = hist.student.map(v => `<span>${v}번</span>`).join('');
+  const p = hist.problem.map(v => `<span>문제 ${v}</span>`).join('');
+  $('pickHist').innerHTML = s + p;
+}
+function clearHist(){ hist = { student:[], problem:[] }; drawHist(); $('pickOut').textContent = '–'; }
+
+/* ══════════════════════════════════════════════════════════
+   4) 학습지 — A4 인쇄용 (학생용 / 교사용 정답본)
+   ══════════════════════════════════════════════════════════ */
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+function drawSheet(){
+  const p = prob, steps = STEPS[p.id] || [];
+  const opts = [...document.querySelectorAll('.sopt')].filter(c=>c.checked).map(c=>c.value);
+  const ans = $('ansMode') && $('ansMode').checked;
+  const B = t => `<span class="blank">${t}</span>`;   // 정답본에서만 보이는 칸
+
+  let h = `<div class="sheet ${ans?'ans':''}">
+    <h2>자동화설비기능사 실기 · PLC제어작업 &nbsp;<span style="font-size:13pt">${p.name}</span></h2>
+    <div class="meta"><span>학년 반 &nbsp;______</span><span>번호 ______</span>
+      <span>이름 ____________</span><span>${ans?'※ 교사용 정답본':'&nbsp;'}</span></div>`;
+
+  if(opts.includes('flow')){
+    const seq = p.seq;
+    const bank = shuffle(seq.map(blockTitle));
+    h += `<h3>① 공정순서도 채우기</h3>
+      <div class="note">아래 보기에서 골라 순서대로 쓰시오. (시작 → 공작물 유무 「유」 다음부터)</div>
+      <div class="bank"><b>보기</b> &nbsp;${bank.join(' / ')}</div>`;
+    h += seq.map((k,i) =>
+      `<div class="fl">${i+1}. ${B(blockTitle(k))}</div>`).join('');
+    h += `<div class="fl">${seq.length+1}. 공작물 재질 판별 →
+      <b>${ans?p.ejectMaterial:'______'}</b>이면 배출상자 / 아니면 저장상자</div>
+      <div class="fl">${seq.length+2}. 컨베이어 정지</div>`;
+  }
+
+  if(opts.includes('step')){
+    h += `<h3>② 스텝 래더 표 채우기 &nbsp;<span class="note">(전환조건 + A<sub>n</sub>) · A<sub>n-1</sub> → A<sub>n</sub></span></h3>
+      <table><tr><th style="width:12%">스텝</th><th style="width:30%">전환조건</th><th>구동부</th></tr>`;
+    h += steps.map((st,i) =>
+      `<tr><td><b>${st.id}</b></td><td>${B(condsTxt(st.cond))}</td><td>${B(driveText(st))}</td></tr>`).join('');
+    h += `</table>
+      <div class="note">※ A1은 마지막 스텝 A${steps.length}의 b접점으로 끊어 한 사이클이 끝나면 초기화된다.</div>`;
+  }
+
+  if(opts.includes('io')){
+    h += `<h3>③ I/O 할당표 채우기</h3><table><tr><th>입력</th><th>기능</th><th>출력</th><th>기능</th></tr>`;
+    const inn = IO_TABLE.in, out = IO_TABLE.out, n = Math.max(inn.length, out.length);
+    for(let i=0;i<n;i++){
+      const a = inn[i], b = out[i];
+      h += `<tr><td>${a?a.sym:''}</td><td>${a?B(a.fn):''}</td>
+                <td>${b?b.sym:''}</td><td>${b?B(b.fn):''}</td></tr>`;
+    }
+    h += `</table>`;
+  }
+
+  if(opts.includes('cond')){
+    h += `<h3>④ 이 문제의 조건 (문제지에 주어지는 내용)</h3>
+      <table>
+        <tr><th style="width:18%">단속동작</th><td>공작물 1개 적재 → PB2 → 1사이클 후 종료</td></tr>
+        <tr><th>연속동작</th><td>${startTxt(p)} → ${contTxt(p)} (공작물 ${p.minWork}개 이상${p.minNote?', '+p.minNote:''})</td></tr>
+        <tr><th>부가조건 1</th><td>${p.cond.add1}</td></tr>
+        <tr><th>부가조건 2</th><td>${p.cond.add2}</td></tr>
+        <tr><th>부가조건 3</th><td>${p.cond.add3}</td></tr>
+      </table>`;
+  }
+
+  h += `</div>`;
+  $('sheetBody').innerHTML = h;
+}
+
+/* ══════════════════════════════════════════════════════════
+   화면 전환 · 단축키
+   ══════════════════════════════════════════════════════════ */
+let curTab = 'demo';
+function showTab(t){
+  curTab = t;
+  ['demo','quiz','pick','sheet'].forEach(k => $(k).classList.toggle('hide', k!==t));
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t===t));
+  if(t!=='demo') stopPlay();
+}
+document.querySelectorAll('.tab').forEach(b =>
+  b.addEventListener('click', () => showTab(b.dataset.t)));
+
+function toggleFull(){
+  if(document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+}
+
+document.addEventListener('keydown', e => {
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  const k = e.key.toLowerCase();
+  if(k==='f'){ toggleFull(); return; }
+  if(curTab==='demo'){
+    if(e.key==='ArrowRight'){ e.preventDefault(); demoGo(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); demoGo(-1); }
+    else if(e.key===' '){ e.preventDefault(); demoPlay(); }
+    else if(k==='h'){ toggleHide(); }
+  } else if(curTab==='quiz'){
+    if(k==='q') nextQuiz();
+    else if(k==='a') revealQuiz();
+  } else if(curTab==='pick'){
+    if(e.key===' '){ e.preventDefault(); spin('student'); }
+  }
+});
+
+document.querySelectorAll('.sopt').forEach(c => c.addEventListener('change', drawSheet));
+
+/* 시작 */
+fillProbSel();
+setTeams(4);
+demoReset();
+drawSheet();
+</script>
+</body>
+</html>
