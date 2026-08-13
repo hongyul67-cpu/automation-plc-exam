@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PLC제어작업 · 전자칠판 이론 수업</title>
+<script src="lesson.js"></script>
+<style>
+:root{
+  --bg:#0b0f16; --panel:#161d29; --panel2:#1f2836; --line:#2f3b4f;
+  --ink:#eef3fb; --dim:#93a2ba; --si:#7cc6ff; --si2:#3b9bff;
+  --good:#37d68f; --bad:#ff5f6d; --gold:#ffd166;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:"Malgun Gothic","맑은 고딕",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+.hidden{display:none!important}
+
+/* ── 무대 ── */
+#stage{position:fixed;inset:0;display:flex;flex-direction:column}
+#head{display:flex;align-items:center;gap:14px;padding:10px 22px;border-bottom:1px solid var(--line);
+  background:#0d131d;flex-shrink:0}
+#hUnit{font-size:clamp(12px,1vw,17px);color:var(--si);font-weight:800}
+#hTitle{font-size:clamp(19px,2.2vw,38px);font-weight:900;letter-spacing:-.6px;flex:1;line-height:1.2}
+#hIdx{font-size:clamp(13px,1.1vw,21px);color:var(--dim);font-weight:800;white-space:nowrap}
+#content{flex:1;position:relative;overflow-y:auto;overflow-x:hidden;
+  padding:min(2vh,20px) min(2.4vw,34px) calc(var(--barh,86px) + min(1.4vh,14px))}
+#inner{min-height:100%;display:flex;flex-direction:column;gap:min(1.6vh,16px)}
+
+/* 그림 (SVG를 직접 그리므로 배경을 어둡게 둔다 — 흰 박스보다 눈이 덜 부시다) */
+.bfig{background:#0f1a27;border:1px solid var(--line);border-radius:16px;padding:10px 14px;
+  display:flex;align-items:center;justify-content:center;min-height:0;flex:1 1 auto}
+.bfig svg{max-height:100%;width:100%}
+/* 발문·퀴즈·해설까지 다 열리면 아래가 길어진다 → 그림과 요점을 줄여 한 화면에 담는다
+   (수업 중에 스크롤을 하면 흐름이 끊기므로 넘치지 않는 것이 중요하다) */
+#inner.compact .bfig{flex:0 1 auto;max-height:20vh}
+#inner.compact .bcap{display:none}
+#inner.compact .bpts{gap:min(0.7vh,8px)}
+#inner.compact .bpts li{font-size:clamp(12px,0.98vw,19px);padding:min(0.65vh,8px) 13px;line-height:1.42}
+#inner.compact .bask{font-size:clamp(14px,1.3vw,25px);padding:min(1vh,12px) 16px}
+#inner.compact .bq{font-size:clamp(15px,1.45vw,28px)}
+#inner.compact .bopt{min-height:52px;padding:min(1.1vh,13px) 15px;font-size:clamp(13px,1.2vw,24px)}
+#inner.compact .bexp{font-size:clamp(12px,1.1vw,22px);padding:min(1vh,12px) 16px;max-height:20vh}
+.bcap{text-align:center;color:var(--dim);font-size:clamp(12px,1.1vw,20px);flex-shrink:0}
+
+/* 요점 */
+.bpts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:min(1vh,11px);flex-shrink:0}
+.bpts li{font-size:clamp(15px,1.45vw,28px);line-height:1.5;background:var(--panel);
+  border:1px solid var(--line);border-left:5px solid var(--si);border-radius:12px;padding:min(1.2vh,13px) 17px}
+.bpts b{color:var(--si)}
+.bask{background:#1b1509;border:1px solid #574316;border-left:5px solid var(--gold);border-radius:14px;
+  padding:min(1.5vh,17px) 20px;font-size:clamp(17px,1.65vw,32px);line-height:1.45;color:#f8ecc6;
+  font-weight:800;flex-shrink:0}
+.bask b{color:#ffe9a8}
+
+/* 퀴즈 */
+.bq{font-size:clamp(18px,1.75vw,34px);font-weight:800;line-height:1.45;flex-shrink:0}
+.bopts{display:grid;grid-template-columns:1fr 1fr;gap:min(1.3vh,13px);flex-shrink:0}
+.bopt{text-align:left;background:var(--panel2);border:2px solid var(--line);border-radius:14px;
+  padding:min(1.6vh,18px) 18px;font-size:clamp(15px,1.4vw,28px);line-height:1.4;min-height:60px;
+  display:flex;align-items:center;gap:12px;transition:.14s}
+.bopt .n{width:1.9em;height:1.9em;flex-shrink:0;border-radius:50%;background:#0f1826;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--dim);font-size:.9em}
+.bopt.ok{background:rgba(55,214,143,.2);border-color:var(--good);box-shadow:0 0 0 4px rgba(55,214,143,.18)}
+.bopt.ok .n{background:var(--good);color:#04240f;border-color:var(--good)}
+.bopt.dim{opacity:.38}
+.bexp{background:#0f1a27;border:1px solid var(--line);border-left:5px solid var(--si);border-radius:12px;
+  padding:min(1.4vh,15px) 19px;font-size:clamp(13px,1.25vw,25px);line-height:1.6;color:#cfe0f3;
+  flex-shrink:0;overflow-y:auto;max-height:26vh}
+.bexp b{color:var(--si)}
+.veil{display:none!important}
+
+@media (max-height:820px){
+  .bpts li{font-size:clamp(13px,1.2vw,22px);padding:min(0.9vh,10px) 14px}
+  .bask{font-size:clamp(15px,1.4vw,26px);padding:min(1.1vh,13px) 16px}
+  .bexp{max-height:22vh}
+}
+
+/* ── 판서 레이어 ── */
+#pad{position:fixed;inset:0;z-index:40;touch-action:none}
+#pad.off{pointer-events:none}
+
+/* ── 도구 팔레트 ── */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;gap:8px;align-items:center;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(9,13,20,.95);
+  border-top:1px solid var(--line);flex-wrap:wrap}
+#bar button{min-height:56px;min-width:56px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);
+  font-size:clamp(13px,1vw,18px);font-weight:800;padding:0 15px}
+#bar button.on{background:linear-gradient(180deg,var(--si2),#2472c8);border-color:transparent;color:#fff}
+#bar button.big{flex:1;min-width:120px;background:linear-gradient(180deg,var(--si2),#2472c8);border:0;color:#fff}
+#bar button:disabled{opacity:.42;filter:grayscale(.6);cursor:default}
+#bar .sep{width:1px;height:42px;background:var(--line);margin:0 4px}
+.swatch{width:42px!important;min-width:42px!important;height:42px;min-height:42px!important;border-radius:50%!important;
+  padding:0!important;border:3px solid #0b0f16!important;box-shadow:0 0 0 2px var(--line)}
+.swatch.on{box-shadow:0 0 0 4px var(--si)!important}
+
+/* ── 오버레이 ── */
+.ov{position:fixed;inset:0;z-index:70;background:rgba(5,8,13,.93);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:24px;padding:20px}
+#timerNum{font-size:min(32vw,280px);font-weight:900;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+#pickNum{font-size:min(38vw,320px);font-weight:900;line-height:1;color:var(--gold)}
+.ov .sub{font-size:clamp(16px,1.9vw,32px);color:var(--dim);font-weight:800;text-align:center}
+.ov .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.ov button{min-height:60px;padding:0 24px;border-radius:15px;background:var(--panel2);border:1px solid var(--line);
+  font-size:clamp(14px,1.15vw,21px);font-weight:800}
+#curtain{position:fixed;left:0;right:0;z-index:50;background:#0b0f16;border-bottom:3px solid var(--si);
+  top:0;height:50%;display:none}
+#curtain.on{display:block}
+
+/* ── 단원 선택 ── */
+#menu{position:fixed;inset:0;z-index:80;background:radial-gradient(1200px 700px at 60% -10%,#1a2536,#0a0d13 62%);
+  display:flex;flex-direction:column;align-items:center;gap:16px;padding:26px 20px;overflow-y:auto}
+#menu h1{font-size:clamp(23px,3vw,48px);font-weight:900;margin:0;letter-spacing:-1px;text-align:center}
+#menu p{color:var(--dim);font-size:clamp(13px,1.15vw,20px);margin:0;text-align:center;line-height:1.6}
+.mgrid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:6px;max-width:1100px}
+.mcard{width:min(320px,86vw);background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--line);border-radius:18px;padding:18px 20px;text-align:left}
+.mcard:hover{border-color:var(--si)}
+.mcard .tt{font-size:clamp(16px,1.4vw,23px);font-weight:900}
+.mcard .ds{font-size:clamp(12px,1vw,16px);color:var(--dim);margin-top:6px;line-height:1.5}
+.mcard.wide{width:min(480px,90vw)}
+
+/* ── 폰으로 미리 볼 때 ──────────────────────────────────────
+   전자칠판·프로젝터가 주 용도지만 교사가 폰으로 내용을 확인하기도 한다.
+   팔레트가 화면 3분의 1을 먹지 않게 줄이고 보기는 한 줄씩 놓는다.
+   ※ #bar button 규칙보다 뒤에 와야 덮어쓸 수 있어 스타일 맨 끝에 둔다. */
+@media (max-width:640px){
+  #bar{gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+  #bar button{min-height:44px;min-width:44px;padding:0 10px;font-size:13px}
+  #bar button.big{min-width:84px}
+  #bar .sep{display:none}
+  .swatch{width:32px!important;min-width:32px!important;height:32px;min-height:32px!important;border-width:2px!important}
+  .bopts{grid-template-columns:1fr}
+  #head{padding:8px 14px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════ 단원 선택 ══════ -->
+<div id="menu">
+  <h1>🖥️ PLC제어작업 · 전자칠판 이론 수업</h1>
+  <p>자동화설비기능사 실기 [시험2] 이론 수업용 화면입니다.<br>
+     요점 → <b>발문</b> → 퀴즈 → 정답을 하나씩 열며 진행하고, 화면 어디든 손이나 펜으로 바로 판서할 수 있습니다.</p>
+  <div class="mgrid" id="unitGrid"></div>
+  <div class="mgrid">
+    <button class="mcard wide" data-mode="blank">
+      <div class="tt">⬜ 빈 칠판</div>
+      <div class="ds">슬라이드 없이 판서만. 필기하며 설명할 때.</div></button>
+  </div>
+  <div style="margin-top:14px;display:flex;gap:18px;flex-wrap:wrap;justify-content:center">
+    <a href="teach.html" style="color:var(--dim);font-size:clamp(12px,1vw,16px);text-decoration:none">
+      👩‍🏫 실습 수업 도구 (공개문제 시연 · 모둠대결) →</a>
+    <a href="index.html" style="color:var(--dim);font-size:clamp(12px,1vw,16px);text-decoration:none">
+      🎯 학생용 앱 →</a>
+  </div>
+</div>
+
+<!-- ══════ 무대 ══════ -->
+<div id="stage" class="hidden">
+  <div id="head">
+    <div style="flex:1;min-width:0">
+      <div id="hUnit"></div>
+      <div id="hTitle"></div>
+    </div>
+    <div id="hIdx"></div>
+  </div>
+  <div id="content"><div id="inner"></div></div>
+</div>
+
+<div id="curtain"></div>
+<canvas id="pad" class="off"></canvas>
+
+<!-- ══════ 도구 팔레트 ══════ -->
+<div id="bar" class="hidden">
+  <button id="bPrev">◀</button>
+  <button class="big" id="bStep">다음</button>
+  <button id="bNext">▶</button>
+  <div class="sep"></div>
+  <button id="tPen" title="펜 (P)">✏️</button>
+  <button id="tHi" title="형광펜">🖍️</button>
+  <button id="tEr" title="지우개">🧽</button>
+  <button class="swatch on" data-c="#ff4d4f" style="background:#ff4d4f"></button>
+  <button class="swatch" data-c="#ffd166" style="background:#ffd166"></button>
+  <button class="swatch" data-c="#4ade80" style="background:#4ade80"></button>
+  <button class="swatch" data-c="#ffffff" style="background:#ffffff"></button>
+  <button id="tUndo" title="되돌리기">↩</button>
+  <button id="tClr" title="판서 지우기 (C)">🗑</button>
+  <div class="sep"></div>
+  <button id="tTimer" title="타이머">⏱</button>
+  <button id="tPick" title="번호 뽑기">🎲</button>
+  <button id="tCurtain" title="가리개">🪟</button>
+  <button id="tFull" title="전체화면 (F)">⛶</button>
+  <button id="tHome" title="처음으로">🏠</button>
+</div>
+
+<!-- ══════ 타이머 ══════ -->
+<div class="ov hidden" id="ovTimer">
+  <div id="timerNum">3:00</div>
+  <div class="sub" id="timerSub">남은 시간</div>
+  <div class="row">
+    <button data-min="1">1분</button><button data-min="3">3분</button><button data-min="5">5분</button>
+    <button data-min="10">10분</button>
+    <button id="tmToggle">⏸ 멈춤</button><button id="tmClose">닫기</button>
+  </div>
+</div>
+
+<!-- ══════ 번호 뽑기 ══════ -->
+<div class="ov hidden" id="ovPick">
+  <div id="pickNum">–</div>
+  <div class="sub" id="pickSub">1 ~ 30번</div>
+  <div class="row">
+    <button id="pkGo">🎲 뽑기</button>
+    <button data-max="20">1~20</button><button data-max="25">1~25</button>
+    <button data-max="30">1~30</button><button data-max="35">1~35</button>
+    <button id="pkReset">기록 초기화</button><button id="pkClose">닫기</button>
+  </div>
+  <div class="sub" id="pkLog" style="font-size:clamp(12px,1vw,17px)"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ═════════ 판서 레이어 ═════════
+   전자칠판은 손·펜이 곧 마우스다. 포인터 이벤트 하나로 다 받는다.
+   획을 배열로 들고 있다가 창 크기가 바뀌면 다시 그린다(되돌리기도 같은 배열). */
+const pad=$('pad'), ctx=pad.getContext('2d');
+let strokes=[], cur=null, tool='none', color='#ff4d4f';
+function fit(){
+  const r=devicePixelRatio||1;
+  pad.width=innerWidth*r; pad.height=innerHeight*r;
+  pad.style.width=innerWidth+'px'; pad.style.height=innerHeight+'px';
+  ctx.setTransform(r,0,0,r,0,0); redraw();
+}
+function redraw(){
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(const s of strokes){
+    if(s.pts.length<2)continue;
+    ctx.globalAlpha=s.hi?0.34:1;
+    ctx.globalCompositeOperation=s.er?'destination-out':'source-over';
+    ctx.strokeStyle=s.c; ctx.lineWidth=s.w;
+    ctx.beginPath(); ctx.moveTo(s.pts[0].x,s.pts[0].y);
+    for(let i=1;i<s.pts.length;i++)ctx.lineTo(s.pts[i].x,s.pts[i].y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
+}
+function setTool(t){
+  tool=t;
+  pad.classList.toggle('off',t==='none');
+  ['tPen','tHi','tEr'].forEach(id=>$(id).classList.remove('on'));
+  if(t==='pen')$('tPen').classList.add('on');
+  if(t==='hi')$('tHi').classList.add('on');
+  if(t==='er')$('tEr').classList.add('on');
+}
+pad.addEventListener('pointerdown',e=>{
+  if(tool==='none')return;
+  pad.setPointerCapture(e.pointerId);
+  const w=tool==='er'?44:(tool==='hi'?26:5);
+  cur={c:color,w,hi:tool==='hi',er:tool==='er',pts:[{x:e.clientX,y:e.clientY}]};
+  strokes.push(cur); redraw();
+});
+pad.addEventListener('pointermove',e=>{
+  if(!cur)return;
+  let list=e.getCoalescedEvents?e.getCoalescedEvents():null;
+  if(!list||!list.length)list=[e];
+  for(const p of list)cur.pts.push({x:p.clientX,y:p.clientY});
+  redraw();
+});
+['pointerup','pointercancel','pointerleave'].forEach(t=>pad.addEventListener(t,()=>{cur=null;}));
+/* 하단 팔레트는 화면이 좁으면 여러 줄로 접혀 높이가 변한다.
+   resize 리스너만으로는 레이아웃이 확정되기 전 값을 읽어 --barh 가 엉뚱하게 굳는 일이 있어
+   (한 번 잘못 굳으면 본문 아래 여백이 그만큼 잡아먹혀 내용이 통째로 밀린다)
+   ResizeObserver 로 실제 높이를 계속 따라가게 한다. */
+function fitBar(){
+  const b=$('bar');
+  const h=b.classList.contains('hidden')?0:Math.round(b.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--barh',h+'px');
+}
+if(window.ResizeObserver) new ResizeObserver(fitBar).observe($('bar'));
+addEventListener('resize',()=>{fit();fitBar();});
+$('tPen').onclick=()=>setTool(tool==='pen'?'none':'pen');
+$('tHi').onclick =()=>setTool(tool==='hi' ?'none':'hi');
+$('tEr').onclick =()=>setTool(tool==='er' ?'none':'er');
+$('tUndo').onclick=()=>{strokes.pop();redraw();};
+$('tClr').onclick =()=>{strokes=[];redraw();};
+document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{
+  color=b.dataset.c;
+  document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  if(tool==='none'||tool==='er')setTool('pen');
+});
+
+/* ═════════ 단원 · 슬라이드 ═════════ */
+/* lesson.js가 전역에 const LESSON/FIGS 를 이미 선언했으므로 여기서 같은 이름을 다시 쓰면
+   "Identifier has already been declared" 로 스크립트 전체가 죽는다 → 다른 이름으로 받는다 */
+const ALL=window.LESSON||[], FIG=window.FIGS||{};
+const UNITS=[...new Set(ALL.map(s=>s.u))];
+let mode='lesson', deck=[], i=0, step=0;
+
+$('unitGrid').innerHTML=UNITS.map(u=>{
+  const n=ALL.filter(s=>s.u===u).length;
+  const first=ALL.find(s=>s.u===u);
+  return `<button class="mcard" data-unit="${u}">
+    <div class="tt">${u}</div>
+    <div class="ds">슬라이드 ${n}장 · ${first.t}</div></button>`;
+}).join('') + `<button class="mcard wide" data-unit="__all">
+    <div class="tt">📚 전체 이어서 (${ALL.length}장)</div>
+    <div class="ds">1단원부터 7단원까지 순서대로 진행합니다.</div></button>`;
+
+function start(m,unit){
+  mode=m; i=0; step=0;
+  deck = m==='blank' ? [] : (unit==='__all' ? ALL : ALL.filter(s=>s.u===unit));
+  $('menu').classList.add('hidden');
+  $('stage').classList.remove('hidden');
+  $('bar').classList.remove('hidden');
+  fit(); fitBar(); render();
+}
+const total=()=>mode==='blank'?1:deck.length;
+
+function render(){
+  const inner=$('inner');
+  if(mode==='blank'){
+    $('hUnit').textContent=''; $('hTitle').textContent='빈 칠판'; $('hIdx').textContent='';
+    inner.className='';
+    inner.innerHTML=`<div style="flex:1;display:flex;align-items:center;justify-content:center;
+      color:#26303f;font-size:clamp(17px,1.9vw,32px);font-weight:800">✏️ 펜을 눌러 판서를 시작하세요</div>`;
+    $('bStep').textContent='—'; $('bStep').disabled=true; return;
+  }
+  const s=deck[i]; if(!s)return;
+  $('bStep').disabled=false;
+  inner.className = step>=2 ? 'compact' : '';
+  $('hUnit').textContent=s.u;
+  $('hTitle').textContent=s.t;
+  $('hIdx').textContent=`${i+1} / ${total()}`;
+  const figSvg = s.fig && FIG[s.fig] ? FIG[s.fig]() : '';
+  inner.innerHTML=`
+    ${figSvg?`<div class="bfig">${figSvg}</div>`:''}
+    ${s.cap?`<div class="bcap">${s.cap}</div>`:''}
+    <ul class="bpts">${s.pts.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <div class="bask ${step<1?'veil':''}">💭 ${s.ask}</div>
+    <div class="${step<2?'veil':''}" style="flex-shrink:0">
+      <div class="bq" style="margin-bottom:10px">🎯 ${s.ansq}</div>
+      <div class="bopts">${s.anso.map((o,k)=>
+        `<div class="bopt ${step>=3?(k===s.ansa?'ok':'dim'):''}"><span class="n">${k+1}</span><span>${o}</span></div>`).join('')}</div>
+    </div>
+    <div class="bexp ${step<3?'veil':''}">${s.anse}</div>`;
+  $('bStep').textContent=['💭 발문','🎯 퀴즈','✅ 정답','✔ 다 열림'][step];
+  $('bPrev').disabled = i===0 && step===0;
+  $('bNext').disabled = i>=total()-1;
+}
+function go(d){
+  if(mode==='blank')return;
+  i=clamp(i+d,0,total()-1); step=0; render();
+  $('content').scrollTop=0;
+}
+function stepUp(){ if(step<3){step++;render();} }
+$('bPrev').onclick=()=>go(-1);
+$('bNext').onclick=()=>go(1);
+$('bStep').onclick=stepUp;
+document.querySelectorAll('.mcard').forEach(b=>b.onclick=()=>{
+  if(b.dataset.mode==='blank')start('blank');
+  else start('lesson', b.dataset.unit);
+});
+$('tHome').onclick=()=>{$('stage').classList.add('hidden');$('bar').classList.add('hidden');
+  $('menu').classList.remove('hidden');setTool('none');};
+$('tFull').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+  else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{});};
+$('tCurtain').onclick=()=>{const c=$('curtain');c.classList.toggle('on');
+  $('tCurtain').classList.toggle('on',c.classList.contains('on'));};
+
+/* 키보드 / 프레젠터 리모컨 */
+addEventListener('keydown',e=>{
+  if(!$('menu').classList.contains('hidden'))return;
+  const k=e.key;
+  if(k==='ArrowRight'||k==='PageDown'||k===' '){e.preventDefault(); step<3?stepUp():go(1);}
+  else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();go(-1);}
+  else if(k==='f'||k==='F'){e.preventDefault();$('tFull').click();}
+  else if(k==='p'||k==='P'){e.preventDefault();$('tPen').click();}
+  else if(k==='c'||k==='C'){e.preventDefault();$('tClr').click();}
+  else if(k==='Escape'){setTool('none');document.querySelectorAll('.ov').forEach(o=>o.classList.add('hidden'));}
+});
+
+/* ═════════ 타이머 ═════════ */
+let tmLeft=180, tmId=null;
+function tmPaint(){const m=Math.floor(tmLeft/60),s=tmLeft%60;
+  $('timerNum').textContent=`${m}:${String(s).padStart(2,'0')}`;
+  $('timerNum').style.color=tmLeft<=10?'var(--bad)':(tmLeft<=30?'var(--gold)':'var(--ink)');}
+function tmSet(min){tmLeft=min*60;tmPaint();tmRun(true);}
+function tmRun(on){
+  if(tmId){clearInterval(tmId);tmId=null;}
+  if(on){tmId=setInterval(()=>{tmLeft=Math.max(0,tmLeft-1);tmPaint();
+    if(tmLeft===0){clearInterval(tmId);tmId=null;$('timerSub').textContent='⏰ 시간 종료';}},1000);
+    $('timerSub').textContent='남은 시간';}
+  $('tmToggle').textContent=tmId?'⏸ 멈춤':'▶ 시작';
+}
+$('tTimer').onclick=()=>{$('ovTimer').classList.remove('hidden');tmPaint();};
+$('tmClose').onclick=()=>$('ovTimer').classList.add('hidden');
+$('tmToggle').onclick=()=>tmRun(!tmId);
+$('ovTimer').querySelectorAll('[data-min]').forEach(b=>b.onclick=()=>tmSet(+b.dataset.min));
+
+/* ═════════ 번호 뽑기 (한 번 뽑힌 번호는 다시 안 나온다) ═════════ */
+let pkMax=30, pkUsed=[];
+function pkPaint(){
+  $('pickSub').textContent=`1 ~ ${pkMax}번 · 남은 번호 ${pkMax-pkUsed.length}명`;
+  $('pkLog').textContent=pkUsed.length?('뽑힌 번호: '+pkUsed.join(', ')):'';
+}
+$('tPick').onclick=()=>{$('ovPick').classList.remove('hidden');pkPaint();};
+$('pkClose').onclick=()=>$('ovPick').classList.add('hidden');
+$('pkReset').onclick=()=>{pkUsed=[];$('pickNum').textContent='–';pkPaint();};
+$('ovPick').querySelectorAll('[data-max]').forEach(b=>b.onclick=()=>{pkMax=+b.dataset.max;pkUsed=[];pkPaint();});
+$('pkGo').onclick=()=>{
+  const pool=[];for(let n=1;n<=pkMax;n++)if(!pkUsed.includes(n))pool.push(n);
+  if(!pool.length){$('pickNum').textContent='끝';return;}
+  let t=0;const spin=setInterval(()=>{
+    $('pickNum').textContent=pool[Math.floor(Math.random()*pool.length)];
+    if(++t>13){clearInterval(spin);
+      const p=pool[Math.floor(Math.random()*pool.length)];
+      $('pickNum').textContent=p;pkUsed.push(p);pkPaint();}
+  },70);
+};
+
+fit();
+</script>
+</body>
+</html>
