@@ -143,6 +143,48 @@
   table{border-collapse:collapse; width:100%; font-size:.8rem}
   th,td{border:1px solid var(--line); padding:4px 7px; text-align:left}
   th{background:var(--bg2); color:var(--dim); font-weight:600}
+
+  /* ── 계급(티어) · 랭크 점수 ─────────────────────────────────
+     혼자 풀면 목표가 안 보여 금방 지친다 → 쌓이는 점수와 올라가는 계급을 보여준다 */
+  .tierbar{display:flex; align-items:center; gap:14px; cursor:pointer;
+    background:linear-gradient(135deg,var(--panel),var(--bg2));
+    border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:12px}
+  .tierbar:hover{border-color:var(--acc)}
+  .tierbar .em{font-size:2.6rem; line-height:1; filter:drop-shadow(0 0 10px currentColor)}
+  .tierbar .info{flex:1; min-width:0}
+  .tierbar .nm{font-size:1.15rem; font-weight:800; letter-spacing:-.3px}
+  .tierbar .lp{font-size:.82rem; color:var(--dim); margin-top:1px}
+  .tierbar .go{color:var(--dim); font-size:.8rem; white-space:nowrap}
+  .pbar{height:9px; background:#0a1622; border:1px solid var(--line); border-radius:99px;
+    overflow:hidden; margin-top:6px}
+  .pbar > i{display:block; height:100%; border-radius:99px; transition:width .5s ease}
+
+  /* 승급 연출 */
+  #tierUp{position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center;
+    background:rgba(5,10,18,.9); padding:20px; text-align:center}
+  #tierUp.on{display:flex}
+  #tierUp .box{animation:tierPop .5s cubic-bezier(.2,1.4,.4,1)}
+  #tierUp .em{font-size:min(28vw,150px); line-height:1; filter:drop-shadow(0 0 26px currentColor)}
+  #tierUp .lb{font-size:1rem; color:var(--gold); font-weight:800; letter-spacing:3px}
+  #tierUp .nm{font-size:min(11vw,58px); font-weight:900; margin:4px 0 10px}
+  #tierUp .sub{color:var(--dim); font-size:.95rem; margin-bottom:18px}
+  @keyframes tierPop{from{transform:scale(.5); opacity:0} to{transform:scale(1); opacity:1}}
+
+  /* 기록실 */
+  .badges{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px}
+  .badge{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:10px;
+    text-align:center; opacity:.35}
+  .badge.on{opacity:1; border-color:var(--gold); background:rgba(251,191,36,.1)}
+  .badge .bi{font-size:1.7rem; line-height:1.1}
+  .badge .bn{font-weight:700; font-size:.85rem; margin-top:3px}
+  .badge .bd{font-size:.7rem; color:var(--dim); line-height:1.35; margin-top:2px}
+  .pgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:7px}
+  .pcell{background:var(--bg2); border:1px solid var(--line); border-radius:9px; padding:7px 8px}
+  .pcell .pt{font-size:.78rem; font-weight:700; margin-bottom:4px}
+  .dots{display:flex; gap:3px}
+  .dots i{flex:1; height:7px; border-radius:2px; background:#0a1622; border:1px solid var(--line)}
+  .dots i.p{background:var(--warn); border-color:var(--warn)}
+  .dots i.f{background:var(--ok); border-color:var(--ok)}
 </style>
 </head>
 <body>
@@ -153,6 +195,8 @@
   <section id="home">
     <h1>⚙️ 자동화설비기능사 실기 · PLC제어작업</h1>
     <div class="sub">공개문제 공정순서도를 조립하고, 가상 설비로 시운전해 봅니다.</div>
+
+    <div class="tierbar" id="tierBar" onclick="openRank()"></div>
 
     <div class="card">
       <div class="row" style="justify-content:space-between; margin-bottom:10px">
@@ -386,6 +430,38 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ 기록실 (계급 · 배지 · 문제별 진도) ============ -->
+  <section id="rank" class="hide">
+    <div class="row" style="justify-content:space-between; margin-bottom:10px">
+      <div><b>🏅 내 기록실</b></div>
+      <button onclick="goHome()">← 처음으로</button>
+    </div>
+    <div class="card" id="rankTop"></div>
+    <div class="card">
+      <b style="display:block; margin-bottom:8px">도전과제</b>
+      <div class="badges" id="badgeBox"></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between; margin-bottom:8px">
+        <b>문제별 진도</b>
+        <span class="cond" style="margin:0">칸 6개 = 1~6단계 · <span style="color:var(--ok)">초록</span> 100점 ·
+          <span style="color:var(--warn)">노랑</span> 푼 적 있음</span>
+      </div>
+      <div class="pgrid" id="progGrid"></div>
+    </div>
+  </section>
+</div>
+
+<!-- 승급 연출 -->
+<div id="tierUp" onclick="closeTierUp()">
+  <div class="box">
+    <div class="em" id="tuEm"></div>
+    <div class="lb" id="tuLb">승급</div>
+    <div class="nm" id="tuNm"></div>
+    <div class="sub" id="tuSub"></div>
+    <button class="btn-main" onclick="closeTierUp()">계속하기</button>
+  </div>
 </div>
 
 <script src="data.js"></script>
@@ -475,6 +551,142 @@ function saveBest(stage, score){
   try{ localStorage.setItem(PKEY, JSON.stringify(progress)); }catch(e){}
 }
 const best = (stage, id) => progress[stage + '_' + (id==null?prob.id:id)];
+
+/* ═══════════════ 계급(티어) · 랭크 점수 ═══════════════
+   혼자 풀면 "얼마나 왔는지"가 안 보여 금방 지친다.
+   이미 저장돼 있는 단계별 최고점(progress)에서 점수를 뽑아내므로
+   기존 학생 기록도 그대로 계급으로 환산된다. */
+const TIERS = [
+  { n:'아이언',    em:'🔩', c:'#8a94a6', min:0    },
+  { n:'브론즈',    em:'🥉', c:'#c2703a', min:190  },
+  { n:'실버',      em:'🥈', c:'#b6c2d1', min:440  },
+  { n:'골드',      em:'🥇', c:'#f0b429', min:750  },
+  { n:'플래티넘',  em:'💠', c:'#2dd4bf', min:1120 },
+  { n:'다이아몬드',em:'💎', c:'#60a5fa', min:1560 },
+  { n:'마스터',    em:'👑', c:'#c084fc', min:2200 }
+];
+/* 한 단계에서 얻는 점수 — 100점을 받아야 최대치가 나오게 해서 "다시 풀기"를 유도한다 */
+const lpOf = s => s>=100?30 : s>=90?25 : s>=80?20 : s>=70?15 : s>=60?10 : s>0?5 : 0;
+const PERFECT_BONUS = 50;      // 한 문제의 6단계를 모두 100점
+
+function calcLP(){
+  let lp = 0, perfect = 0, cleared = 0, done = 0;
+  PROBLEMS.forEach(p => {
+    let all100 = true, touched = false;
+    STAGE_DEFS.forEach(s => {
+      const b = progress[s.key + '_' + p.id];
+      if(b != null){ lp += lpOf(b); touched = true; done++; if(b < 100) all100 = false; }
+      else all100 = false;
+    });
+    if(all100){ lp += PERFECT_BONUS; perfect++; }
+    if(touched) cleared++;
+  });
+  return { lp, perfect, cleared, done, maxDone: PROBLEMS.length * STAGE_DEFS.length };
+}
+/* 티어 안을 III·II·I 세 칸으로 나눈다 (마스터는 최고 계급이라 나누지 않는다) */
+function rankOf(lp){
+  let ti = 0;
+  TIERS.forEach((t,k) => { if(lp >= t.min) ti = k; });
+  const t = TIERS[ti], last = ti === TIERS.length-1;
+  if(last) return { t, ti, div:'', pct:100, cur:lp - t.min, need:0, next:null };
+  const step = (TIERS[ti+1].min - t.min) / 3;
+  const d = Math.min(2, Math.floor((lp - t.min) / step));
+  const lo = t.min + step*d;
+  return { t, ti, div:['Ⅲ','Ⅱ','Ⅰ'][d],
+    pct: Math.max(0, Math.min(100, Math.round((lp - lo) / step * 100))),
+    cur: Math.round(lp - lo), need: Math.round(step),
+    next: d===2 ? TIERS[ti+1] : t };
+}
+const BADGES = [
+  { ic:'🌱', n:'첫걸음',      d:'아무 단계나 100점',
+    test:()=>PROBLEMS.some(p=>STAGE_DEFS.some(s=>progress[s.key+'_'+p.id]===100)) },
+  { ic:'🛡️', n:'실격 방지',   d:'테스트동작 100점',
+    test:()=>PROBLEMS.some(p=>progress['tst_'+p.id]===100) },
+  { ic:'🧩', n:'순서도 장인', d:'순서도 조립 100점 3문제',
+    test:()=>PROBLEMS.filter(p=>progress['asm_'+p.id]===100).length>=3 },
+  { ic:'⚡', n:'래더 장인',   d:'A스텝 100점 3문제',
+    test:()=>PROBLEMS.filter(p=>progress['lad_'+p.id]===100).length>=3 },
+  { ic:'🏭', n:'무결 시운전', d:'시운전을 정답 순서로 완주',
+    test:()=>PROBLEMS.some(p=>progress['sim_'+p.id]===100) },
+  { ic:'💯', n:'퍼펙트',      d:'한 문제 6단계 모두 100점',
+    test:()=>PROBLEMS.some(p=>STAGE_DEFS.every(s=>progress[s.key+'_'+p.id]===100)) },
+  { ic:'🔥', n:'정복자',      d:'10문제에서 A스텝 100점',
+    test:()=>PROBLEMS.filter(p=>progress['lad_'+p.id]===100).length>=10 },
+  { ic:'👑', n:'올클리어',    d:'20문제 모두 A스텝 100점',
+    test:()=>PROBLEMS.every(p=>progress['lad_'+p.id]===100) }
+];
+
+function drawTierBar(){
+  const el = $('tierBar'); if(!el) return;
+  const { lp } = calcLP(), r = rankOf(lp);
+  el.innerHTML =
+    `<div class="em" style="color:${r.t.c}">${r.t.em}</div>
+     <div class="info">
+       <div class="nm" style="color:${r.t.c}">${r.t.n} ${r.div}</div>
+       <div class="lp">랭크 점수 <b style="color:var(--gold)">${lp} LP</b>${
+         r.next ? ` · 다음까지 ${Math.max(0, r.need - r.cur)} LP` : ' · 최고 계급'}</div>
+       <div class="pbar"><i style="width:${r.pct}%; background:${r.t.c}"></i></div>
+     </div>
+     <div class="go">기록실 →</div>`;
+}
+/* 승급했는지 보고, 올랐으면 큰 화면으로 축하한다 */
+let lastRankKey = null;
+function rankKey(){ const r = rankOf(calcLP().lp); return r.t.n + r.div; }
+function checkTierUp(){
+  const now = rankKey();
+  if(lastRankKey && now !== lastRankKey){
+    const r = rankOf(calcLP().lp);
+    const up = TIERS.findIndex(t=>t.n===r.t.n) >= TIERS.findIndex(t=>t.n===lastRankKey.replace(/[ⅠⅡⅢ]/g,'').trim());
+    $('tuEm').textContent = r.t.em;
+    $('tuEm').style.color = r.t.c;
+    $('tuLb').textContent = up ? '승급!' : '계급 변동';
+    $('tuNm').textContent = `${r.t.n} ${r.div}`;
+    $('tuNm').style.color = r.t.c;
+    $('tuSub').textContent = `랭크 점수 ${calcLP().lp} LP`;
+    $('tierUp').classList.add('on');
+    try{ beep(660,.12); setTimeout(()=>beep(880,.12),130); setTimeout(()=>beep(1175,.22),260); }catch(e){}
+  }
+  lastRankKey = now;
+}
+function closeTierUp(){ $('tierUp').classList.remove('on'); }
+
+function openRank(){
+  ['asm','sim','done','io','lad','add','learn','tst','home'].forEach(s=>$(s).classList.add('hide'));
+  $('rank').classList.remove('hide');
+  const st = calcLP(), r = rankOf(st.lp);
+  $('rankTop').innerHTML =
+    `<div class="row" style="gap:16px">
+       <div style="font-size:3.4rem; line-height:1; color:${r.t.c}">${r.t.em}</div>
+       <div style="flex:1; min-width:0">
+         <div style="font-size:1.4rem; font-weight:800; color:${r.t.c}">${r.t.n} ${r.div}</div>
+         <div class="cond" style="margin:2px 0 0">랭크 점수 <b style="color:var(--gold)">${st.lp} LP</b>${
+           r.next ? ` · 다음 계급까지 ${Math.max(0, r.need - r.cur)} LP` : ' · 최고 계급 달성'}</div>
+         <div class="pbar"><i style="width:${r.pct}%; background:${r.t.c}"></i></div>
+       </div>
+     </div>
+     <div class="row" style="margin-top:12px; gap:18px">
+       <div><div class="cond" style="margin:0">푼 단계</div><b>${st.done} / ${st.maxDone}</b></div>
+       <div><div class="cond" style="margin:0">손댄 문제</div><b>${st.cleared} / ${PROBLEMS.length}</b></div>
+       <div><div class="cond" style="margin:0">퍼펙트 문제</div><b style="color:var(--gold)">${st.perfect}</b></div>
+     </div>
+     <div class="cond" style="margin-top:10px">
+       한 단계 100점 = 30 LP · 90점 25 · 80점 20 · 70점 15 · 60점 10 ·
+       한 문제 6단계를 모두 100점 내면 <b style="color:var(--gold)">+${PERFECT_BONUS} LP</b> 보너스.
+       점수는 <b>최고 기록</b>만 반영되므로 다시 풀어 올리면 계급이 오릅니다.</div>`;
+  $('badgeBox').innerHTML = BADGES.map(b=>{
+    let on = false; try{ on = !!b.test(); }catch(e){}
+    return `<div class="badge ${on?'on':''}"><div class="bi">${on?b.ic:'🔒'}</div>
+      <div class="bn">${b.n}</div><div class="bd">${b.d}</div></div>`;
+  }).join('');
+  $('progGrid').innerHTML = PROBLEMS.map(p=>{
+    const dots = STAGE_DEFS.map(s=>{
+      const v = progress[s.key+'_'+p.id];
+      return `<i class="${v===100?'f':(v!=null?'p':'')}" title="${s.n}단계 ${v!=null?v+'점':'미실시'}"></i>`;
+    }).join('');
+    return `<div class="pcell"><div class="pt">${p.name.replace('공개문제 ','문제 ')}</div>
+      <div class="dots">${dots}</div></div>`;
+  }).join('');
+}
 
 /* 시험장 순서대로 — 테스트동작(실격 방지)이 먼저, 그다음 단속·연속.
    스텝 방식도 더 단순한 B체인에서 먼저 익히고 A체인으로 넘어간다. */
@@ -704,6 +916,7 @@ function renderHome(){
   }).join('');
   /* 주소는 수험자가 배정하는 항목이라 '?'로 채운 열은 아무 정보가 없다 → 기기별 묶음으로 보여준다 */
   $('ioWrap').innerHTML = ioGroupsHTML();
+  drawTierBar();
 }
 function pickProb(id){
   prob = PROBLEMS.find(p=>p.id===id);
@@ -711,7 +924,7 @@ function pickProb(id){
   sClick(); renderHome();
 }
 function goHome(){
-  ['asm','sim','done','io','lad','add','learn','tst'].forEach(s=>$(s).classList.add('hide'));
+  ['asm','sim','done','io','lad','add','learn','tst','rank'].forEach(s=>$(s).classList.add('hide'));
   $('home').classList.remove('hide');
   stopSim(); renderHome();
 }
@@ -1710,8 +1923,15 @@ async function runCycle(mode){
 
   if(!S.err){
     const isCorrect = JSON.stringify(userSeq || prob.seq) === JSON.stringify(prob.seq);
+    /* 6단계도 랭크 점수를 준다 — 정답 순서로 무사히 완주했을 때만 100점 */
+    if(isCorrect && S.cycles > 0){
+      const had = progress['sim_' + prob.id];
+      saveBest('sim', 100);
+      if(had !== 100) setTimeout(checkTierUp, 900);
+    }
     $('simBanner').innerHTML = isCorrect
-      ? `<div class="banner ok"><b>정상 동작!</b> ${S.cycles}사이클 완료 — 배출상자 ${S.boxes.eject}, 저장상자 ${S.boxes.keep}. 공정순서도와 일치하는 순서입니다.</div>`
+      ? `<div class="banner ok"><b>정상 동작!</b> ${S.cycles}사이클 완료 — 배출상자 ${S.boxes.eject}, 저장상자 ${S.boxes.keep}.
+          공정순서도와 일치하는 순서입니다. ${S.cycles>0?`<b style="color:var(--gold)">+${lpOf(100)} LP</b>`:''}</div>`
       : `<div class="banner warn"><b>돌기는 했지만</b> 공정순서도와 순서가 다릅니다. 조립 모드에서 정확한 순서를 맞춰 보세요.</div>`;
   }
 }
@@ -1741,7 +1961,10 @@ function finish(score, correct, total, modeName, fromStage){
       `<div style="font-size:.9rem; color:var(--dim)">${prob.name} · ${modeName}</div>
        <div class="score">${score}점</div>
        <div style="color:var(--gold); font-size:1.2rem">${grade}</div>
-       <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 정확</div>`;
+       <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 정확</div>
+       <div class="cond" style="margin-top:10px">이번 단계로 얻은 랭크 점수
+         <b style="color:var(--gold)">${lpOf(score)} LP</b>
+         ${score<100?` · 100점이면 ${lpOf(100)} LP`:''} · 지금 <b>${calcLP().lp} LP</b></div>`;
     // 막다른 화면이 되지 않게 — 다시 풀기 / 다음 단계 배우기 / 시운전으로 이어준다
     const order = ['io','tst','asm','lad','add'];
     const next = order[order.indexOf(fromStage) + 1];   // add 다음은 없음(undefined)
@@ -1750,6 +1973,8 @@ function finish(score, correct, total, modeName, fromStage){
     nav += `<button class="btn-main" onclick="doneGoTest('sim')">🏭 시운전 하러 가기 →</button>`;
     $('doneNav').innerHTML = nav;
     if(rcReady()) $('btnSubmit').classList.remove('hide');
+    /* 계급이 올랐으면 결과를 본 뒤에 축하 화면을 띄운다(퀴즈 도중에 끼어들면 흐름이 끊긴다) */
+    setTimeout(checkTierUp, 700);
   }, 1400);
 }
 /* done 화면에서 다른 단계로 — done을 숨기고 해당 단계 테스트/배우기를 연다 */
@@ -1758,14 +1983,18 @@ function doneGoLearn(k){ $('done').classList.add('hide'); startLearn(k); }
 function submitResult(){
   if(!lastResult || !rcReady()) return;
   try{
+    const st = calcLP(), r = rankOf(st.lp);
     ResultCollector.config.tool = '자동화설비 실기 PLC제어작업 · ' + lastResult.modeName;
     ResultCollector.open({
       score: lastResult.score, correct: lastResult.correct, total: lastResult.total,
-      durationSec: Math.round((Date.now()-sessStart)/1000)
+      durationSec: Math.round((Date.now()-sessStart)/1000),
+      /* 계급·랭크점수도 함께 보내 선생님이 시트에서 반 순위를 볼 수 있게 한다 */
+      wrong: `계급 ${r.t.n} ${r.div} · ${st.lp} LP · 퍼펙트 ${st.perfect}문제`
     });
   }catch(e){ alert('제출 위젯을 불러오지 못했습니다.'); }
 }
 
+lastRankKey = rankKey();   // 시작 계급을 잡아둔다 — 이후 올라가면 승급 연출
 renderHome();
 </script>
 </body>
