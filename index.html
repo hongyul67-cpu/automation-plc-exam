@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>자동화설비기능사 실기 · PLC제어작업 마스터</title>
 <script src="https://hongyul67-cpu.github.io/links/collector.js" data-tool="자동화설비 실기 PLC제어작업"></script>
+<!-- 계급·랭크포인트는 다른 도구와 같은 공용 위젯을 쓴다 — 필기(자동화설비필기)와 규칙이 같아야
+     학생이 두 과목에서 같은 계급 체계를 본다. data-tool이 저장 키라 실기는 따로 쌓인다. -->
+<script src="https://hongyul67-cpu.github.io/links/rank.js" data-tool="자동화설비실기PLC"></script>
 <style>
   :root{
     --bg:#0d1b2a; --bg2:#122a41; --panel:#15304a; --line:#2f5c85;
@@ -158,17 +161,6 @@
   .pbar{height:9px; background:#0a1622; border:1px solid var(--line); border-radius:99px;
     overflow:hidden; margin-top:6px}
   .pbar > i{display:block; height:100%; border-radius:99px; transition:width .5s ease}
-
-  /* 승급 연출 */
-  #tierUp{position:fixed; inset:0; z-index:120; display:none; align-items:center; justify-content:center;
-    background:rgba(5,10,18,.9); padding:20px; text-align:center}
-  #tierUp.on{display:flex}
-  #tierUp .box{animation:tierPop .5s cubic-bezier(.2,1.4,.4,1)}
-  #tierUp .em{font-size:min(28vw,150px); line-height:1; filter:drop-shadow(0 0 26px currentColor)}
-  #tierUp .lb{font-size:1rem; color:var(--gold); font-weight:800; letter-spacing:3px}
-  #tierUp .nm{font-size:min(11vw,58px); font-weight:900; margin:4px 0 10px}
-  #tierUp .sub{color:var(--dim); font-size:.95rem; margin-bottom:18px}
-  @keyframes tierPop{from{transform:scale(.5); opacity:0} to{transform:scale(1); opacity:1}}
 
   /* 기록실 */
   .badges{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px}
@@ -453,17 +445,6 @@
   </section>
 </div>
 
-<!-- 승급 연출 -->
-<div id="tierUp" onclick="closeTierUp()">
-  <div class="box">
-    <div class="em" id="tuEm"></div>
-    <div class="lb" id="tuLb">승급</div>
-    <div class="nm" id="tuNm"></div>
-    <div class="sub" id="tuSub"></div>
-    <button class="btn-main" onclick="closeTierUp()">계속하기</button>
-  </div>
-</div>
-
 <script src="data.js"></script>
 <script>
 /* ===================== 공통 ===================== */
@@ -520,7 +501,9 @@ let userSeq = null;          // 조립 모드에서 확정한 순서 (없으면 
 let asmScore = {};           // 문제별 최고점
 const sessStart = Date.now();
 
-function hasRC(){ return !!(window.ResultCollector && ResultCollector.config && ResultCollector.config.exec); }
+/* 위젯이 실제로 노출하는 필드는 endpoint다(exec가 아니다).
+   exec를 보던 탓에 선생님 링크(?rc=)로 들어와도 제출 버튼이 뜨지 않았다. */
+function hasRC(){ return !!(window.ResultCollector && ResultCollector.config && ResultCollector.config.endpoint); }
 function rcReady(){ try{ return hasRC(); }catch(e){ return false; } }
 
 /* 오디오 (외부 파일 없음) */
@@ -552,50 +535,48 @@ function saveBest(stage, score){
 }
 const best = (stage, id) => progress[stage + '_' + (id==null?prob.id:id)];
 
-/* ═══════════════ 계급(티어) · 랭크 점수 ═══════════════
-   혼자 풀면 "얼마나 왔는지"가 안 보여 금방 지친다.
-   이미 저장돼 있는 단계별 최고점(progress)에서 점수를 뽑아내므로
-   기존 학생 기록도 그대로 계급으로 환산된다. */
-const TIERS = [
-  { n:'아이언',    em:'🔩', c:'#8a94a6', min:0    },
-  { n:'브론즈',    em:'🥉', c:'#c2703a', min:190  },
-  { n:'실버',      em:'🥈', c:'#b6c2d1', min:440  },
-  { n:'골드',      em:'🥇', c:'#f0b429', min:750  },
-  { n:'플래티넘',  em:'💠', c:'#2dd4bf', min:1120 },
-  { n:'다이아몬드',em:'💎', c:'#60a5fa', min:1560 },
-  { n:'마스터',    em:'👑', c:'#c084fc', min:2200 }
-];
-/* 한 단계에서 얻는 점수 — 100점을 받아야 최대치가 나오게 해서 "다시 풀기"를 유도한다 */
-const lpOf = s => s>=100?30 : s>=90?25 : s>=80?20 : s>=70?15 : s>=60?10 : s>0?5 : 0;
-const PERFECT_BONUS = 50;      // 한 문제의 6단계를 모두 100점
+/* ═══════════════ 계급 · 랭크포인트 ═══════════════
+   계급은 공용 위젯 rank.js가 담당한다 — 필기 앱을 비롯한 다른 도구와
+   규칙(아이언~마스터, 55점이 본전, 연승 보너스)이 같아야 학생이 헷갈리지 않는다.
+   여기서는 위젯을 감싸기만 하고, 문제·단계별 진도는 아래 progStat()이 따로 센다. */
+function hasRank(){ return typeof Rank!=='undefined' && Rank && typeof Rank.award==='function'; }
+function awardRank(pct, mode){
+  if(!hasRank()) return null;
+  try{ return Rank.award(pct, {mode}); }catch(e){ return null; }
+}
+function rankBox(res){ if(!res || !hasRank()) return ''; try{ return Rank.resultBox(res); }catch(e){ return ''; } }
+function rankTier(){ try{ return (window.Rank && Rank.get().tier.full) || undefined; }catch(e){ return undefined; } }
+function rankDetail(){
+  if(!hasRank()) return '';
+  try{ const g = Rank.get(); return ((g.tier && g.tier.full)||'') + ' · ' + (g.rp||0) + 'RP'; }catch(e){ return ''; }
+}
+/* 활동별 도전 횟수 — 생기부(세특) 키워드에 "스스로 N회 반복 연습"으로 들어간다 */
+const TRYKEY = 'plcx_try_v1';
+function bumpTry(m){
+  let d={}; try{ d=JSON.parse(localStorage.getItem(TRYKEY))||{}; }catch(e){}
+  d[m]=(d[m]||0)+1;
+  try{ localStorage.setItem(TRYKEY, JSON.stringify(d)); }catch(e){}
+  return d[m];
+}
+function getTry(m){
+  let d={}; try{ d=JSON.parse(localStorage.getItem(TRYKEY))||{}; }catch(e){}
+  return d[m]||1;
+}
 
-function calcLP(){
-  let lp = 0, perfect = 0, cleared = 0, done = 0;
+/* 문제·단계별 진도 (계급과 별개 — "어디까지 했나"를 보여주는 지도) */
+function progStat(){
+  let perfect = 0, cleared = 0, done = 0;
   PROBLEMS.forEach(p => {
     let all100 = true, touched = false;
     STAGE_DEFS.forEach(s => {
       const b = progress[s.key + '_' + p.id];
-      if(b != null){ lp += lpOf(b); touched = true; done++; if(b < 100) all100 = false; }
+      if(b != null){ touched = true; done++; if(b < 100) all100 = false; }
       else all100 = false;
     });
-    if(all100){ lp += PERFECT_BONUS; perfect++; }
+    if(all100) perfect++;
     if(touched) cleared++;
   });
-  return { lp, perfect, cleared, done, maxDone: PROBLEMS.length * STAGE_DEFS.length };
-}
-/* 티어 안을 III·II·I 세 칸으로 나눈다 (마스터는 최고 계급이라 나누지 않는다) */
-function rankOf(lp){
-  let ti = 0;
-  TIERS.forEach((t,k) => { if(lp >= t.min) ti = k; });
-  const t = TIERS[ti], last = ti === TIERS.length-1;
-  if(last) return { t, ti, div:'', pct:100, cur:lp - t.min, need:0, next:null };
-  const step = (TIERS[ti+1].min - t.min) / 3;
-  const d = Math.min(2, Math.floor((lp - t.min) / step));
-  const lo = t.min + step*d;
-  return { t, ti, div:['Ⅲ','Ⅱ','Ⅰ'][d],
-    pct: Math.max(0, Math.min(100, Math.round((lp - lo) / step * 100))),
-    cur: Math.round(lp - lo), need: Math.round(step),
-    next: d===2 ? TIERS[ti+1] : t };
+  return { perfect, cleared, done, maxDone: PROBLEMS.length * STAGE_DEFS.length };
 }
 const BADGES = [
   { ic:'🌱', n:'첫걸음',      d:'아무 단계나 100점',
@@ -618,61 +599,34 @@ const BADGES = [
 
 function drawTierBar(){
   const el = $('tierBar'); if(!el) return;
-  const { lp } = calcLP(), r = rankOf(lp);
-  el.innerHTML =
-    `<div class="em" style="color:${r.t.c}">${r.t.em}</div>
-     <div class="info">
-       <div class="nm" style="color:${r.t.c}">${r.t.n} ${r.div}</div>
-       <div class="lp">랭크 점수 <b style="color:var(--gold)">${lp} LP</b>${
-         r.next ? ` · 다음까지 ${Math.max(0, r.need - r.cur)} LP` : ' · 최고 계급'}</div>
-       <div class="pbar"><i style="width:${r.pct}%; background:${r.t.c}"></i></div>
-     </div>
-     <div class="go">기록실 →</div>`;
-}
-/* 승급했는지 보고, 올랐으면 큰 화면으로 축하한다 */
-let lastRankKey = null;
-function rankKey(){ const r = rankOf(calcLP().lp); return r.t.n + r.div; }
-function checkTierUp(){
-  const now = rankKey();
-  if(lastRankKey && now !== lastRankKey){
-    const r = rankOf(calcLP().lp);
-    const up = TIERS.findIndex(t=>t.n===r.t.n) >= TIERS.findIndex(t=>t.n===lastRankKey.replace(/[ⅠⅡⅢ]/g,'').trim());
-    $('tuEm').textContent = r.t.em;
-    $('tuEm').style.color = r.t.c;
-    $('tuLb').textContent = up ? '승급!' : '계급 변동';
-    $('tuNm').textContent = `${r.t.n} ${r.div}`;
-    $('tuNm').style.color = r.t.c;
-    $('tuSub').textContent = `랭크 점수 ${calcLP().lp} LP`;
-    $('tierUp').classList.add('on');
-    try{ beep(660,.12); setTimeout(()=>beep(880,.12),130); setTimeout(()=>beep(1175,.22),260); }catch(e){}
+  const st = progStat();
+  if(!hasRank()){   // 오프라인 등으로 위젯을 못 받았을 때도 진도는 보여준다
+    el.innerHTML = `<div class="em">📊</div><div class="info">
+      <div class="nm">내 기록실</div>
+      <div class="lp">푼 단계 ${st.done} / ${st.maxDone} · 퍼펙트 ${st.perfect}문제</div></div>
+      <div class="go">기록실 →</div>`;
+    return;
   }
-  lastRankKey = now;
+  el.innerHTML = `<div style="flex:1">${Rank.card()}</div><div class="go">기록실 →</div>`;
 }
-function closeTierUp(){ $('tierUp').classList.remove('on'); }
 
 function openRank(){
   ['asm','sim','done','io','lad','add','learn','tst','home'].forEach(s=>$(s).classList.add('hide'));
   $('rank').classList.remove('hide');
-  const st = calcLP(), r = rankOf(st.lp);
+  const st = progStat();
+  const g = hasRank() ? Rank.get() : null;
   $('rankTop').innerHTML =
-    `<div class="row" style="gap:16px">
-       <div style="font-size:3.4rem; line-height:1; color:${r.t.c}">${r.t.em}</div>
-       <div style="flex:1; min-width:0">
-         <div style="font-size:1.4rem; font-weight:800; color:${r.t.c}">${r.t.n} ${r.div}</div>
-         <div class="cond" style="margin:2px 0 0">랭크 점수 <b style="color:var(--gold)">${st.lp} LP</b>${
-           r.next ? ` · 다음 계급까지 ${Math.max(0, r.need - r.cur)} LP` : ' · 최고 계급 달성'}</div>
-         <div class="pbar"><i style="width:${r.pct}%; background:${r.t.c}"></i></div>
-       </div>
-     </div>
-     <div class="row" style="margin-top:12px; gap:18px">
+    (hasRank() ? Rank.card() : '<div class="cond">계급 위젯을 불러오지 못했습니다(오프라인).</div>') +
+    `<div class="row" style="margin-top:12px; gap:18px">
        <div><div class="cond" style="margin:0">푼 단계</div><b>${st.done} / ${st.maxDone}</b></div>
        <div><div class="cond" style="margin:0">손댄 문제</div><b>${st.cleared} / ${PROBLEMS.length}</b></div>
        <div><div class="cond" style="margin:0">퍼펙트 문제</div><b style="color:var(--gold)">${st.perfect}</b></div>
+       ${g?`<div><div class="cond" style="margin:0">최고 연승</div><b>${g.bestStreak||0}</b></div>`:''}
      </div>
      <div class="cond" style="margin-top:10px">
-       한 단계 100점 = 30 LP · 90점 25 · 80점 20 · 70점 15 · 60점 10 ·
-       한 문제 6단계를 모두 100점 내면 <b style="color:var(--gold)">+${PERFECT_BONUS} LP</b> 보너스.
-       점수는 <b>최고 기록</b>만 반영되므로 다시 풀어 올리면 계급이 오릅니다.</div>`;
+       단계를 풀 때마다 점수에 따라 <b>RP</b>가 오르내립니다 — <b>55점이 본전</b>,
+       100점이면 보너스, 3연승부터 추가 점수. 다시 풀어 점수를 올리면 계급이 올라갑니다.
+       ${g&&g.plays?`지금까지 <b>${g.plays}판</b> 했습니다.`:''}</div>`;
   $('badgeBox').innerHTML = BADGES.map(b=>{
     let on = false; try{ on = !!b.test(); }catch(e){}
     return `<div class="badge ${on?'on':''}"><div class="bi">${on?b.ic:'🔒'}</div>
@@ -931,6 +885,7 @@ function goHome(){
 function startStage(k){
   $('home').classList.add('hide');
   $(k).classList.remove('hide');
+  bumpTry(k);   // 이 단계를 몇 번째 도전하는지 — 제출 시 생기부 키워드에 쓰인다
   if(k==='asm') resetAsm();
   if(k==='sim') initSim();
   if(k==='io')  startIO();
@@ -1923,15 +1878,15 @@ async function runCycle(mode){
 
   if(!S.err){
     const isCorrect = JSON.stringify(userSeq || prob.seq) === JSON.stringify(prob.seq);
-    /* 6단계도 랭크 점수를 준다 — 정답 순서로 무사히 완주했을 때만 100점 */
+    /* 6단계도 계급에 반영한다 — 정답 순서로 무사히 완주했을 때만 100점 */
+    let simRk = null;
     if(isCorrect && S.cycles > 0){
-      const had = progress['sim_' + prob.id];
       saveBest('sim', 100);
-      if(had !== 100) setTimeout(checkTierUp, 900);
+      simRk = awardRank(100, '전체 시운전');
     }
     $('simBanner').innerHTML = isCorrect
       ? `<div class="banner ok"><b>정상 동작!</b> ${S.cycles}사이클 완료 — 배출상자 ${S.boxes.eject}, 저장상자 ${S.boxes.keep}.
-          공정순서도와 일치하는 순서입니다. ${S.cycles>0?`<b style="color:var(--gold)">+${lpOf(100)} LP</b>`:''}</div>`
+          공정순서도와 일치하는 순서입니다.</div>${simRk ? rankBox(simRk) : ''}`
       : `<div class="banner warn"><b>돌기는 했지만</b> 공정순서도와 순서가 다릅니다. 조립 모드에서 정확한 순서를 맞춰 보세요.</div>`;
   }
 }
@@ -1952,7 +1907,9 @@ function estop(){
 /* ===================== 결과 ===================== */
 let lastResult = null;
 function finish(score, correct, total, modeName, fromStage){
-  lastResult = { score, correct, total, modeName };
+  lastResult = { score, correct, total, modeName, stage: fromStage };
+  /* 계급 정산은 결과를 띄우기 직전에 한 번만 — 위젯이 승급·강등까지 계산해 준다 */
+  const rkRes = awardRank(score, modeName);
   setTimeout(()=>{
     $(fromStage || 'asm').classList.add('hide');
     $('done').classList.remove('hide');
@@ -1962,9 +1919,7 @@ function finish(score, correct, total, modeName, fromStage){
        <div class="score">${score}점</div>
        <div style="color:var(--gold); font-size:1.2rem">${grade}</div>
        <div style="margin-top:8px; color:var(--dim); font-size:.9rem">${correct}/${total} 정확</div>
-       <div class="cond" style="margin-top:10px">이번 단계로 얻은 랭크 점수
-         <b style="color:var(--gold)">${lpOf(score)} LP</b>
-         ${score<100?` · 100점이면 ${lpOf(100)} LP`:''} · 지금 <b>${calcLP().lp} LP</b></div>`;
+       <div style="margin-top:12px">${rankBox(rkRes)}</div>`;
     // 막다른 화면이 되지 않게 — 다시 풀기 / 다음 단계 배우기 / 시운전으로 이어준다
     const order = ['io','tst','asm','lad','add'];
     const next = order[order.indexOf(fromStage) + 1];   // add 다음은 없음(undefined)
@@ -1973,28 +1928,32 @@ function finish(score, correct, total, modeName, fromStage){
     nav += `<button class="btn-main" onclick="doneGoTest('sim')">🏭 시운전 하러 가기 →</button>`;
     $('doneNav').innerHTML = nav;
     if(rcReady()) $('btnSubmit').classList.remove('hide');
-    /* 계급이 올랐으면 결과를 본 뒤에 축하 화면을 띄운다(퀴즈 도중에 끼어들면 흐름이 끊긴다) */
-    setTimeout(checkTierUp, 700);
   }, 1400);
 }
 /* done 화면에서 다른 단계로 — done을 숨기고 해당 단계 테스트/배우기를 연다 */
 function doneGoTest(k){ $('done').classList.add('hide'); startStage(k); }
 function doneGoLearn(k){ $('done').classList.add('hide'); startLearn(k); }
+/* 제출 — collector.js가 mode(활동명)·retry(도전횟수)·tier(계급)로
+   생기부(세특) 키워드와 초안 문장을 자동으로 만들어 시트에 함께 넣는다.
+   학생이 따로 소감을 쓰지 않아도 교사가 바로 쓸 문장이 남는다. */
 function submitResult(){
   if(!lastResult || !rcReady()) return;
   try{
-    const st = calcLP(), r = rankOf(st.lp);
-    ResultCollector.config.tool = '자동화설비 실기 PLC제어작업 · ' + lastResult.modeName;
+    const st = progStat();
+    const mode = lastResult.modeName;
+    ResultCollector.config.tool = '자동화설비 실기 PLC제어작업 · ' + mode;
     ResultCollector.open({
       score: lastResult.score, correct: lastResult.correct, total: lastResult.total,
       durationSec: Math.round((Date.now()-sessStart)/1000),
-      /* 계급·랭크점수도 함께 보내 선생님이 시트에서 반 순위를 볼 수 있게 한다 */
-      wrong: `계급 ${r.t.n} ${r.div} · ${st.lp} LP · 퍼펙트 ${st.perfect}문제`
+      mode: `${prob.name} ${mode}`,
+      retry: getTry(lastResult.stage),   // 도전 횟수는 단계 키로 센다(모드명과 표기가 달라도 어긋나지 않게)
+      tier: rankTier(),
+      detail: rankDetail(),
+      extra: st.perfect ? [`퍼펙트 ${st.perfect}문제 달성`] : undefined
     });
   }catch(e){ alert('제출 위젯을 불러오지 못했습니다.'); }
 }
 
-lastRankKey = rankKey();   // 시작 계급을 잡아둔다 — 이후 올라가면 승급 연출
 renderHome();
 </script>
 </body>
