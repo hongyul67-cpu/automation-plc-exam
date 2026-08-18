@@ -1927,7 +1927,7 @@ function finish(score, correct, total, modeName, fromStage){
     if(next) nav += `<button onclick="doneGoLearn('${next}')">▶ 다음 단계 배우기</button>`;
     nav += `<button class="btn-main" onclick="doneGoTest('sim')">🏭 시운전 하러 가기 →</button>`;
     $('doneNav').innerHTML = nav;
-    if(rcReady()) $('btnSubmit').classList.remove('hide');
+    $('btnSubmit').classList.remove('hide');   /* 제출 버튼은 항상 보인다 (규약 §1 ③) */
   }, 1400);
 }
 /* done 화면에서 다른 단계로 — done을 숨기고 해당 단계 테스트/배우기를 연다 */
@@ -1937,11 +1937,19 @@ function doneGoLearn(k){ $('done').classList.add('hide'); startLearn(k); }
    생기부(세특) 키워드와 초안 문장을 자동으로 만들어 시트에 함께 넣는다.
    학생이 따로 소감을 쓰지 않아도 교사가 바로 쓸 문장이 남는다. */
 function submitResult(){
-  if(!lastResult || !rcReady()) return;
+  if(!lastResult) return;
+  if(!rcReady()){
+      alert(['이 링크로는 제출이 되지 않아요.','',
+        '선생님이 나눠 준 제출용 링크(주소 뒤에 ?rc=... 가 붙은 링크)로',
+        '들어와야 반·번호를 입력하고 결과를 보낼 수 있습니다.','',
+        '연습은 지금 이대로 계속 하셔도 됩니다.'].join(String.fromCharCode(10)));
+    return;
+  }
   try{
     const st = progStat();
     const mode = lastResult.modeName;
-    ResultCollector.config.tool = '자동화설비 실기 PLC제어작업 · ' + mode;
+    /* 시트 탭은 하나로 — 파트는 mode 로 (규약 §1 ①) */
+    ResultCollector.config.tool = '자동화설비 실기 PLC제어작업';
     ResultCollector.open({
       score: lastResult.score, correct: lastResult.correct, total: lastResult.total,
       durationSec: Math.round((Date.now()-sessStart)/1000),
