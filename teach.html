@@ -114,7 +114,10 @@
   .sheet .fl{border:1px solid #444; padding:1.5mm 2.5mm; margin-bottom:1.2mm; font-size:10.5pt}
   .sheet .note{font-size:10pt; color:#333}
   @media print{
-    body{background:#fff}
+    /* 화면은 어두운 테마라 글자가 거의 흰색이다.
+       종이는 흰색이므로 글자색도 같이 검정으로 돌려놓지 않으면 학습지가 빈 종이로 나온다.
+       (.sheet .blank 의 흰 글자는 빈칸용이라 그대로 둔다 — 더 구체적이라 이 규칙을 이긴다) */
+    body{background:#fff; color:#000}
     .noprint{display:none !important}
     /* 어느 탭에 있든 Ctrl+P를 누르면 학습지가 나오게 한다 */
     #demo,#quiz,#pick{display:none !important}
