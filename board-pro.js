@@ -58,7 +58,7 @@
 
     /* ── 본문 ── */
     '#bp-body{flex:1;position:relative;overflow-y:auto;overflow-x:hidden;',
-    '  padding:min(2vh,18px) min(2.4vw,30px) calc(var(--bph,84px) + 12px)}',
+    '  padding:min(2vh,18px) min(2.4vw,30px) min(2vh,18px)}',
     '#bp-in{min-height:100%;display:flex;flex-direction:column;gap:min(1.6vh,15px)}',
     '.bp-fig{background:#0f1a27;border:1px solid #2f3b4f;border-radius:15px;padding:10px 13px;',
     '  display:flex;align-items:center;justify-content:center;min-height:0;flex:1 1 auto;overflow:auto}',
@@ -112,21 +112,35 @@
     '#bp-curtain.on{display:block}',
 
     /* ── 도구바 : 언제나 한 줄. 넘치면 뒤쪽부터 ⋯ 안으로 ── */
-    '#bp-bar{position:fixed;left:0;right:0;bottom:0;z-index:99060;display:flex;gap:7px;align-items:center;',
+    /* 화면에 고정(position:fixed)하면 본문이 이 막대 밑으로 흘러 지나간다 —
+       요점 속 빈칸이 도구 단추와 포개져 버린다(폭이 좁을수록 심하다).
+       층의 마지막 칸으로 두면 본문은 제 상자 안에서만 구르므로 그럴 일이 없다. */
+    '#bp-bar{flex:0 0 auto;z-index:99060;display:flex;gap:7px;align-items:center;',
     '  padding:9px 12px calc(9px + env(safe-area-inset-bottom));background:rgba(9,13,20,.96);',
     '  border-top:1px solid #2f3b4f;flex-wrap:nowrap;overflow:hidden}',
+    '#bp-bar[hidden]{display:none!important}',
     '#bp-bar button{min-height:52px;min-width:52px;border-radius:13px;background:#1f2836;border:1px solid #2f3b4f;',
     '  font-size:clamp(13px,1vw,17px);font-weight:800;padding:0 13px;flex-shrink:0}',
     '#bp-bar button.on{background:linear-gradient(180deg,#3b9bff,#2472c8);border-color:transparent;color:#fff}',
-    '#bp-bar button.big{flex:0 0 auto;min-width:96px;background:linear-gradient(180deg,#3b9bff,#2472c8);border:0;color:#fff}',
+    '#bp-bar button.big{flex:0 0 auto;min-width:96px;max-width:min(46vw,230px);',
+    '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+    '  background:linear-gradient(180deg,#3b9bff,#2472c8);border:0;color:#fff}',
     '#bp-bar button:disabled{opacity:.42;filter:grayscale(.6);cursor:default}',
-    '#bp-nav{display:flex;gap:7px;align-items:center;flex:0 0 auto}',   /* 절대 줄지 않는다 */
-    '#bp-tools{display:flex;gap:7px;align-items:center;justify-content:flex-end;flex:1 1 auto;min-width:0;overflow:hidden}',
+    '#bp-nav{display:flex;gap:7px;align-items:center;flex:0 0 auto;width:max-content}',
+    /* width:max-content 를 준 이유 — flex-shrink:0 만으로는 이 칸이 제 내용보다
+       좁게 잡히는 일이 있었다. 그러면 안의 [◀][다음][▶] 가 칸 밖으로 삐져나와
+       옆의 도구 단추와 포개지고, bar 는 넘치지 않은 것으로 보여 ⋯ 로 옮기지도 않는다. */
+    '#bp-tools{display:flex;gap:7px;align-items:center;flex:0 0 auto;width:max-content;margin-left:auto}',
+    /* 어느 칸도 줄어들면 안 된다. 줄어들면 그 안의 단추들이 상자 밖으로
+       삐져나와 옆 칸과 포개지고, 넘친 폭도 잘못 재게 된다.
+       모두 제 크기를 지키게 두고, 넘치는 것은 bar 가 잘라 낸다(overflow:hidden).
+       그 상태에서 bar.scrollWidth 가 진짜 필요한 폭이 된다. */
+    '#bp-bar > *{flex-shrink:0}',
     '.bp-sw{width:40px!important;min-width:40px!important;height:40px;min-height:40px!important;',
     '  border-radius:50%!important;padding:0!important;border:3px solid #0b0f16!important;box-shadow:0 0 0 2px #2f3b4f}',
     '.bp-sw.on{box-shadow:0 0 0 4px #7cc6ff!important}',
     '#bp-more{flex:0 0 auto}',
-    '#bp-pop{position:fixed;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));z-index:99070;',
+    '#bp-pop{position:fixed;right:12px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:99070;',
     '  background:#131a26;border:1px solid #2f3b4f;border-radius:16px;padding:10px;display:none;',
     '  gap:7px;flex-wrap:wrap;max-width:min(420px,92vw);box-shadow:0 14px 40px rgba(0,0,0,.55)}',
     '#bp-pop.on{display:flex}',
@@ -175,11 +189,38 @@
     '@media (max-width:640px){',
     '  #bp-bar{gap:5px;padding:7px 9px calc(7px + env(safe-area-inset-bottom))}',
     '  #bp-bar button{min-height:44px;min-width:44px;padding:0 9px;font-size:13px}',
-    '  #bp-bar button.big{min-width:74px}',
+    '  #bp-bar button.big{min-width:74px;max-width:40vw}',
     '  .bp-opts{grid-template-columns:1fr}',
     '  #bp-head{padding:7px 12px}',
     '}'
   ].join('\n');
+
+  /* 도구바 — #bp 안의 마지막 칸으로 들어간다(본문이 밑으로 지나가지 않도록) */
+  var BAR_HTML =
+    '<div id="bp-bar" hidden>' +
+      '<div id="bp-nav">' +
+        '<button type="button" data-a="prev" title="이전 (←)">◀</button>' +
+        '<button type="button" class="big" data-a="step">다음</button>' +
+        '<button type="button" data-a="next" title="다음 (→)">▶</button>' +
+      '</div>' +
+      '<div id="bp-tools">' +
+        '<button type="button" id="bp-pen"  data-a="pen"  title="펜 (P)">✏️</button>' +
+        '<button type="button" id="bp-hi"   data-a="hi"   title="형광펜">🖍️</button>' +
+        '<button type="button" id="bp-er"   data-a="er"   title="지우개">🧽</button>' +
+        '<button type="button" class="bp-sw on" data-c="#ff4d4f" style="background:#ff4d4f" title="빨강"></button>' +
+        '<button type="button" class="bp-sw"    data-c="#ffd166" style="background:#ffd166" title="노랑"></button>' +
+        '<button type="button" class="bp-sw"    data-c="#4ade80" style="background:#4ade80" title="초록"></button>' +
+        '<button type="button" class="bp-sw"    data-c="#ffffff" style="background:#ffffff" title="흰색"></button>' +
+        '<button type="button" data-a="undo" title="되돌리기">↩</button>' +
+        '<button type="button" data-a="clr"  title="판서 지우기 (C)">🗑</button>' +
+        '<button type="button" data-a="timer"   title="타이머">⏱</button>' +
+        '<button type="button" data-a="pick"    title="번호 뽑기">🎲</button>' +
+        '<button type="button" id="bp-cur" data-a="curtain" title="가리개">🪟</button>' +
+        '<button type="button" data-a="full"    title="전체화면 (F)">⛶</button>' +
+        '<button type="button" data-a="home"    title="처음으로">🏠</button>' +
+      '</div>' +
+      '<button type="button" id="bp-more" data-a="more" title="더보기" hidden>⋯</button>' +
+    '</div>';
 
   /* ═════════ 상태 ═════════ */
   var opts = null, root = null, pad = null, ctx = null;
@@ -224,39 +265,15 @@
         '<div style="flex:1;min-width:0"><div id="bp-u"></div><div id="bp-t"></div></div>' +
         '<div id="bp-i"></div>' +
       '</div>' +
-      '<div id="bp-body"><div id="bp-in"></div></div>';
+      '<div id="bp-body"><div id="bp-in"></div></div>' +
+      BAR_HTML;
     document.body.appendChild(root);
 
     var extra = document.createElement('div');
     extra.innerHTML =
       '<div id="bp-curtain"></div>' +
       '<canvas id="bp-pad" class="off"></canvas>' +
-      '<div id="bp-bar" hidden>' +
-        '<div id="bp-nav">' +
-          '<button type="button" data-a="prev" title="이전 (←)">◀</button>' +
-          '<button type="button" class="big" data-a="step">다음</button>' +
-          '<button type="button" data-a="next" title="다음 (→)">▶</button>' +
-        '</div>' +
-        '<div id="bp-tools">' +
-          '<button type="button" id="bp-pen"  data-a="pen"  title="펜 (P)">✏️</button>' +
-          '<button type="button" id="bp-hi"   data-a="hi"   title="형광펜">🖍️</button>' +
-          '<button type="button" id="bp-er"   data-a="er"   title="지우개">🧽</button>' +
-          '<button type="button" class="bp-sw on" data-c="#ff4d4f" style="background:#ff4d4f" title="빨강"></button>' +
-          '<button type="button" class="bp-sw"    data-c="#ffd166" style="background:#ffd166" title="노랑"></button>' +
-          '<button type="button" class="bp-sw"    data-c="#4ade80" style="background:#4ade80" title="초록"></button>' +
-          '<button type="button" class="bp-sw"    data-c="#ffffff" style="background:#ffffff" title="흰색"></button>' +
-          '<button type="button" data-a="undo" title="되돌리기">↩</button>' +
-          '<button type="button" data-a="clr"  title="판서 지우기 (C)">🗑</button>' +
-          '<button type="button" data-a="timer"   title="타이머">⏱</button>' +
-          '<button type="button" data-a="pick"    title="번호 뽑기">🎲</button>' +
-          '<button type="button" id="bp-cur" data-a="curtain" title="가리개">🪟</button>' +
-          '<button type="button" data-a="full"    title="전체화면 (F)">⛶</button>' +
-          '<button type="button" data-a="home"    title="처음으로">🏠</button>' +
-        '</div>' +
-        '<button type="button" id="bp-more" data-a="more" title="더보기" hidden>⋯</button>' +
-      '</div>' +
       '<div id="bp-pop"></div>' +
-
       '<div class="bp-ov" id="bp-ovt">' +
         '<div id="bp-tnum">3:00</div><div class="sub" id="bp-tsub">남은 시간</div>' +
         '<div class="row">' +
@@ -322,35 +339,37 @@
 
   /* ═════════ 도구바 — 한 줄로 맞추기 ═════════
      넘치면 뒤쪽 버튼부터 「⋯」 안으로 옮긴다. 그래서 절대 겹치지 않는다. */
+  /* 한 칸 안의 단추들이 실제로 차지하는 폭 (칸 자체의 폭은 믿지 않는다) */
+  function widthOf(box, gap) {
+    var kids = box.children, w = 0;
+    for (var k = 0; k < kids.length; k++) w += kids[k].offsetWidth + (k ? gap : 0);
+    return w;
+  }
+
   function fitBar() {
-    var bar = $('bp-bar'), tools = $('bp-tools'), pop = $('bp-pop'), more = $('bp-more');
-    if (!bar || bar.hidden) { document.documentElement.style.setProperty('--bph', '0px'); return; }
+    var bar = $('bp-bar'), nav = $('bp-nav'), tools = $('bp-tools'),
+        pop = $('bp-pop'), more = $('bp-more');
+    if (!bar || bar.hidden) return;
 
     while (pop.firstChild) tools.appendChild(pop.firstChild);   /* 일단 전부 되돌린다 */
     more.hidden = true;
 
-    /* 폭 계산은 자로 잰다.
-       bar 는 overflow:hidden 이고 tools 는 줄어들 수 있어서, scrollWidth 로는
-       넘친 것을 알 수 없다(줄어든 상자 안에서 아이들만 삐져나온다). 그래서
-       아이들 너비를 직접 더해 남은 자리와 견준다. */
+    /* 칸(#bp-nav·#bp-tools)의 offsetWidth 나 bar.scrollWidth 는 믿을 수 없다 —
+       flex 가 칸을 제 내용보다 좁게 잡아 놓고도 넘쳤다고 알려 주지 않는 경우가 있다.
+       (실제로 [◀][다음][▶] 가 칸 밖으로 삐져나와 도구 단추와 96% 포개졌다.)
+       그래서 단추 하나하나의 폭을 직접 더해서 견준다. 단추는 줄어들지 않으므로
+       offsetWidth 가 곧 제 크기다. */
     var cs = getComputedStyle(bar);
     var gap = parseFloat(cs.columnGap || cs.gap) || 7;
     var padL = parseFloat(cs.paddingLeft) || 0, padR = parseFloat(cs.paddingRight) || 0;
-    var nav = $('bp-nav');
-    var room = bar.clientWidth - padL - padR - nav.offsetWidth - gap;
+    var room = bar.clientWidth - padL - padR - widthOf(nav, gap) - gap;
 
-    function need() {
-      var kids = tools.children, w = 0;
-      for (var k = 0; k < kids.length; k++) w += kids[k].offsetWidth + (k ? gap : 0);
-      return w;
-    }
     var guard = 0;
-    while (need() > room && tools.lastElementChild && guard++ < 40) {
+    while (widthOf(tools, gap) > room && tools.lastElementChild && guard++ < 40) {
       if (more.hidden) { more.hidden = false; room -= (more.offsetWidth + gap); }
       pop.insertBefore(tools.lastElementChild, pop.firstChild);
     }
     if (pop.childElementCount === 0) { more.hidden = true; pop.classList.remove('on'); }
-    document.documentElement.style.setProperty('--bph', Math.round(bar.getBoundingClientRect().height) + 'px');
   }
 
   /* 도구바 다시 맞추기.
@@ -532,6 +551,11 @@
     $('bp-curtain').classList.remove('on');
     $('bp-cur').classList.remove('on');
     strokes = []; redraw();
+    /* 메뉴는 위를 덮을 뿐이라 앞 슬라이드가 그대로 뒤에 남는다.
+       남겨 두면 그 안의 빈칸·보기가 메뉴 칸과 자리를 다투므로 비운다. */
+    $('bp-in').innerHTML = '';
+    $('bp-in').className = '';
+    $('bp-u').textContent = ''; $('bp-t').textContent = ''; $('bp-i').textContent = '';
     $('bp-menu').classList.add('on');
     relayout();
   }
