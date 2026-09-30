@@ -128,6 +128,7 @@
   .learnref .lrpage{padding:8px 0; border-top:1px dashed var(--line); font-size:.82rem}
   .learnref .lrpage:first-child{border-top:none}
   .learnref svg{max-width:100%}
+  .learnfig{margin:4px 0 14px}
 
   /* 시뮬레이터 */
   svg{width:100%; height:auto; display:block; background:#0a1622; border-radius:10px}
@@ -595,6 +596,10 @@ body.teach-open #teachwrap #demo, body.teach-open #teachwrap #quiz, body.teach-o
 </div>
 
 <script src="data.js"></script>
+<!-- 그림 — 그리는 도구(fig.js)는 links 의 공용 파일, 그림 모음(figs.js)은 이 저장소 것.
+     배우기 쪽과 수업 슬라이드가 같은 그림을 쓴다. lesson.js 보다 먼저 부른다. -->
+<script src="https://hongyul67-cpu.github.io/links/fig.js"></script>
+<script src="figs.js"></script>
 <!-- 수업 슬라이드 — 예전 board.html 이 index 안으로 들어왔습니다.
      원고(lesson.js)는 이 저장소 것이고, 화면은 links 의 공용 board-pro.js 입니다.
      저장소마다 사본을 두지 않습니다 — 고칠 일이 있으면 links 저장소에서 고칩니다. -->
@@ -780,7 +785,7 @@ function openBoardPro(){
   if(!window.BoardPro || !(window.LESSON||[]).length){
     alert('수업자료를 불러오지 못했습니다.'); return;
   }
-  const ALL = window.LESSON, FIG = window.FIGS || {};
+  const ALL = window.LESSON;
   const units = [...new Set(ALL.map(s=>s.u))];
   const menu = units.map(u=>{
     const list = ALL.filter(s=>s.u===u);
@@ -800,8 +805,8 @@ function openBoardPro(){
         '요점 → <b>발문</b> → 퀴즈 → 정답을 하나씩 열며 진행하고, 화면 어디든 손이나 펜으로 바로 판서할 수 있습니다.<br>'+
         '요점 속 <b>파란 빈칸</b>은 눌러야 답이 보입니다.',
     menu: menu,
-    /* 그림은 lesson.js 의 FIGS[키]() 가 그려 준다 */
-    fig: s => (s.fig && FIG[s.fig]) ? FIG[s.fig]() : ''
+    /* 그림은 figs.js 에 있다 — 배우기 쪽과 같은 그림 (2026-09-30 그림08) */
+    fig: s => (s.fig && window.FIG && FIG.has(s.fig)) ? FIG.svgOf(s.fig) : ''
   });
 }
 
@@ -1014,7 +1019,21 @@ function buildLearn(key){
       P('① 모든 실린더 후진<br>② 모든 모터 정지<br>③ 모든 램프 소등 (단, 부가조건1 조건은 반영)') +
       TIP('그리고 <b>리셋하지 않은 상태에서 재동작</b>이 되어야 합니다. 한 번 돌고 나서 버튼을 다시 누르면 또 돌아야 해요. 안 되면 실격입니다.'));
   }
-  return P1;
+  return P1.map(learnFig);
+}
+/* 배우기 쪽 제목(H2)에 맞는 그림을 figs.js 에서 찾아 제목 바로 아래에 붙인다.
+   어느 그림이 어느 쪽에 가는지는 figs.js 의 learn:[제목…] 이 정한다.
+   「공개문제 1 · 부가조건 3 (비상정지)」처럼 문제 이름이 앞에 붙는 쪽은 끝부분으로 맞춘다. */
+function learnFig(page){
+  if(!window.FIG || !window.FIGS) return page;
+  const m = page.match(/^<div style="font-size:1\.1rem; font-weight:700; margin-bottom:8px">([\s\S]*?)<\/div>/);
+  if(!m) return page;
+  const title = m[1];
+  const keys = Object.keys(FIGS).filter(k => (FIGS[k].learn||[]).some(t => title === t || title.endsWith(' · ' + t)));
+  if(!keys.length) return page;
+  /* 한 장이면 넓게(최대 560px), 여러 장이면 격자로 */
+  const fig = keys.length === 1 ? FIG.figure(keys[0]) : FIG.gallery(keys);
+  return m[0] + `<div class="learnfig">${fig}</div>` + page.slice(m[0].length);
 }
 function startLearn(key){
   learnKey = key; learnPages = buildLearn(key); learnIdx = 0;

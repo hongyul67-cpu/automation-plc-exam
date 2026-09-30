@@ -2,313 +2,14 @@
    PLC제어작업 이론 수업 슬라이드 — 전자칠판/프로젝터용
    구성: 단원 → 슬라이드(제목 + 그림 + 요점 + 발문 + 즉석퀴즈)
 
-   그림은 사진 대신 SVG로 그린다. 빔프로젝터에서 확대돼도 선이 뭉개지지
+   그림은 사진 대신 SVG로 그린다(figs.js). 빔프로젝터에서 확대돼도 선이 뭉개지지
    않고, 교재 스캔본과 달리 글씨 크기를 화면에 맞춰 키울 수 있기 때문.
    ══════════════════════════════════════════════════════════════ */
 
-/* ── 그림 그리기 공용 조각 ───────────────────────────────────── */
-const F = {
-  W: '#8fb6d6',      // 배선
-  A: '#38bdf8',      // 강조(파랑)
-  G: '#fbbf24',      // 강조(노랑)
-  OK: '#22c55e',
-  BAD: '#ef4444',
-  T: '#e8f4ff',      // 글자
-  D: '#8fb6d6'       // 흐린 글자
-};
-/* 접점: b=true 면 b접점(사선) */
-function fContact(x, y, label, b, color){
-  const c = color || F.A;
-  return `<line x1="${x-14}" y1="${y-20}" x2="${x-14}" y2="${y+20}" stroke="${c}" stroke-width="4"/>
-    <line x1="${x+14}" y1="${y-20}" x2="${x+14}" y2="${y+20}" stroke="${c}" stroke-width="4"/>
-    ${b ? `<line x1="${x-12}" y1="${y+20}" x2="${x+12}" y2="${y-20}" stroke="${c}" stroke-width="3"/>` : ''}
-    <text x="${x}" y="${y-30}" fill="${c}" font-size="22" text-anchor="middle" font-weight="700">${label}</text>`;
-}
-function fCoil(x, y, label){
-  return `<circle cx="${x}" cy="${y}" r="20" fill="none" stroke="${F.W}" stroke-width="3"/>
-    <text x="${x}" y="${y-30}" fill="${F.T}" font-size="22" text-anchor="middle" font-weight="700">${label}</text>`;
-}
-const fLine = (x1,y1,x2,y2,c,w) =>
-  `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c||F.W}" stroke-width="${w||3}"/>`;
-const fText = (x,y,t,size,c,anchor,weight) =>
-  `<text x="${x}" y="${y}" fill="${c||F.T}" font-size="${size||20}" text-anchor="${anchor||'start'}"
-     font-weight="${weight||400}">${t}</text>`;
-const fBox = (x,y,w,h,label,c,sub) =>
-  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#15304a" stroke="${c||F.W}" stroke-width="2.5"/>
-   <text x="${x+w/2}" y="${y+h/2+(sub?-4:8)}" fill="${F.T}" font-size="22" text-anchor="middle" font-weight="700">${label}</text>
-   ${sub?`<text x="${x+w/2}" y="${y+h/2+22}" fill="${F.D}" font-size="17" text-anchor="middle">${sub}</text>`:''}`;
-const fArrow = (x1,y1,x2,y2,c) => {
-  const col = c || F.G;
-  const a = Math.atan2(y2-y1, x2-x1), L = 14;
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="3"/>
-    <polygon points="${x2},${y2} ${x2-L*Math.cos(a-0.4)},${y2-L*Math.sin(a-0.4)} ${x2-L*Math.cos(a+0.4)},${y2-L*Math.sin(a+0.4)}"
-      fill="${col}"/>`;
-};
-const svg = (w, h, body) =>
-  `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">${body}</svg>`;
-
-/* ── 그림들 ───────────────────────────────────────────────── */
-const FIGS = {
-  /* 입력 → 제어 → 출력 */
-  iochain: () => svg(900, 240, [
-    fBox(40, 70, 200, 100, '입력', F.A, '스위치 · 센서'),
-    fBox(350, 70, 200, 100, '제어', F.G, 'PLC (판단)'),
-    fBox(660, 70, 200, 100, '출력', F.OK, '실린더 · 모터 · 램프'),
-    fArrow(240, 120, 350, 120),
-    fArrow(550, 120, 660, 120),
-    fText(140, 210, 'PB2 · LS1 · S3', 18, F.D, 'middle'),
-    fText(450, 210, '조건이 맞으면 켠다', 18, F.D, 'middle'),
-    fText(760, 210, 'SOL1 · M1 · PL2', 18, F.D, 'middle')
-  ].join('')),
-
-  /* a접점 · b접점 */
-  contacts: () => svg(900, 300, [
-    fText(225, 40, 'a접점 (평상시 열림)', 24, F.A, 'middle', 700),
-    fLine(60, 110, 160, 110), fContact(190, 110, 'PB', false), fLine(220, 110, 390, 110),
-    fText(225, 165, '누르면 → 통한다 (ON)', 20, F.T, 'middle'),
-    fText(225, 200, '평소엔 끊겨 있다', 20, F.D, 'middle'),
-    fText(225, 245, '시작 버튼 · "~이면"', 19, F.G, 'middle', 700),
-
-    fLine(450, 70, 450, 270, '#2f5c85', 2),
-
-    fText(675, 40, 'b접점 (평상시 닫힘)', 24, F.BAD, 'middle', 700),
-    fLine(510, 110, 610, 110), fContact(640, 110, 'PB', true, F.BAD), fLine(670, 110, 840, 110),
-    fText(675, 165, '누르면 → 끊긴다 (OFF)', 20, F.T, 'middle'),
-    fText(675, 200, '평소엔 통해 있다', 20, F.D, 'middle'),
-    fText(675, 245, '정지 버튼 · "~아니면"', 19, F.G, 'middle', 700)
-  ].join('')),
-
-  /* 직렬 AND · 병렬 OR */
-  andor: () => svg(900, 320, [
-    fText(220, 38, '직렬 = 그리고 (AND)', 24, F.A, 'middle', 700),
-    fLine(50, 120, 90, 120), fContact(120, 120, 'PB2', false),
-    fLine(150, 120, 210, 120), fContact(240, 120, 'S1', false),
-    fLine(270, 120, 330, 120), fCoil(360, 120, 'A1'), fLine(380, 120, 410, 120),
-    fText(220, 195, '둘 다 켜져야 코일이 켜진다', 20, F.T, 'middle'),
-    fText(220, 230, '"버튼을 눌렀고 <tspan fill="' + F.G + '">그리고</tspan> 공작물이 있으면"', 19, F.D, 'middle'),
-
-    fLine(470, 60, 470, 290, '#2f5c85', 2),
-
-    fText(690, 38, '병렬 = 또는 (OR)', 24, F.OK, 'middle', 700),
-    fLine(520, 120, 560, 120),
-    fLine(560, 120, 560, 175), fLine(560, 175, 620, 175),
-    fContact(650, 120, 'PB2', false), fContact(650, 175, 'A1', false),
-    fLine(680, 120, 740, 120), fLine(680, 175, 740, 175), fLine(740, 175, 740, 120),
-    fCoil(775, 120, 'A1'), fLine(795, 120, 830, 120),
-    fText(690, 235, '둘 중 하나만 켜져도 켜진다', 20, F.T, 'middle'),
-    fText(690, 270, '자기유지가 바로 이 모양', 19, F.G, 'middle', 700)
-  ].join('')),
-
-  /* 자기유지 — 이 과목의 핵심 */
-  selfhold: () => svg(900, 330, [
-    fLine(60, 40, 60, 260, F.W, 3),      // 좌모선
-    fLine(840, 40, 840, 260, F.W, 3),    // 우모선
-    // 기동 분기
-    fLine(60, 120, 150, 120),
-    fContact(180, 120, 'PB1', false),
-    fLine(210, 120, 330, 120),
-    // 자기유지 분기
-    fLine(150, 120, 150, 195), fLine(150, 195, 210, 195),
-    fContact(240, 195, 'M', false, F.G),
-    fLine(270, 195, 330, 195), fLine(330, 195, 330, 120),
-    // 정지 b접점 → 코일
-    fLine(330, 120, 480, 120),
-    fContact(510, 120, 'PB2', true, F.BAD),
-    fLine(540, 120, 700, 120),
-    fCoil(730, 120, 'M'),
-    fLine(750, 120, 840, 120),
-    fText(240, 245, '↑ 자기가 자기를 붙잡는 접점', 19, F.G, 'middle', 700),
-    fText(510, 245, '↑ 여기가 끊기면 전부 꺼진다', 19, F.BAD, 'middle', 700),
-    fText(450, 300, 'PB1을 눌렀다 떼도 M이 계속 켜져 있다 — 이것이 자기유지', 22, F.T, 'middle', 700)
-  ].join('')),
-
-  /* PLC 구조 */
-  plcparts: () => svg(900, 300, [
-    fBox(30, 90, 150, 110, '입력부', F.A, 'LS · S · PB'),
-    fBox(230, 60, 200, 170, 'CPU', F.G, '프로그램 실행'),
-    fBox(480, 90, 150, 110, '출력부', F.OK, 'SOL · M · PL'),
-    fBox(690, 90, 170, 110, '전원부', F.W, 'DC 24V'),
-    fArrow(180, 145, 230, 145),
-    fArrow(430, 145, 480, 145),
-    fText(105, 245, '바깥 신호를 받아', 17, F.D, 'middle'),
-    fText(330, 260, '조건을 따져 판단', 17, F.D, 'middle'),
-    fText(555, 245, '기계를 움직인다', 17, F.D, 'middle'),
-    fText(330, 40, 'XGI (LS ELECTRIC)', 20, F.G, 'middle', 700)
-  ].join('')),
-
-  /* 스캔 방식 */
-  scan: () => svg(900, 300, [
-    fBox(60, 110, 190, 90, '① 입력 읽기', F.A, '모든 입력을 한 번에'),
-    fBox(340, 110, 190, 90, '② 연산', F.G, '래더를 위→아래로'),
-    fBox(620, 110, 190, 90, '③ 출력 내보내기', F.OK, '결과를 한 번에'),
-    fArrow(250, 155, 340, 155),
-    fArrow(530, 155, 620, 155),
-    // 되돌아가는 화살표
-    fLine(715, 200, 715, 250, F.G, 3),
-    fLine(715, 250, 155, 250, F.G, 3),
-    fArrow(155, 250, 155, 200),
-    fText(435, 275, '이 한 바퀴를 1스캔 — 눈 깜짝할 사이에 계속 반복한다', 21, F.T, 'middle', 700),
-    fText(435, 60, '입력을 읽는 순간과 출력을 내는 순간이 따로 있다', 19, F.D, 'middle')
-  ].join('')),
-
-  /* 래더 읽는 법 */
-  ladder: () => svg(900, 300, [
-    fLine(90, 50, 90, 250, F.G, 4),
-    fLine(810, 50, 810, 250, F.G, 4),
-    fText(90, 35, '좌모선', 19, F.G, 'middle', 700),
-    fText(810, 35, '우모선', 19, F.G, 'middle', 700),
-    fLine(90, 140, 250, 140), fContact(280, 140, 'LS2', false),
-    fLine(310, 140, 450, 140), fContact(480, 140, 'S1', false),
-    fLine(510, 140, 680, 140), fCoil(710, 140, 'SOL1'), fLine(730, 140, 810, 140),
-    fText(380, 205, '조건(접점)은 왼쪽에', 20, F.A, 'middle', 700),
-    fText(710, 205, '결과(코일)는 오른쪽에', 20, F.OK, 'middle', 700),
-    fText(450, 265, '왼쪽에서 오른쪽으로 전기가 흐르듯 읽는다', 21, F.T, 'middle', 700)
-  ].join('')),
-
-  /* 센서 — 이 시험의 핵심 함정 */
-  sensors: () => svg(900, 330, [
-    fText(225, 40, 'S3 · 유도형', 26, F.A, 'middle', 700),
-    `<circle cx="225" cy="120" r="46" fill="#15304a" stroke="${F.A}" stroke-width="3"/>`,
-    fText(225, 130, '금속만', 22, F.A, 'middle', 700),
-    fText(225, 195, '금속 → ON', 22, F.OK, 'middle', 700),
-    fText(225, 230, '비금속 → OFF', 22, F.BAD, 'middle', 700),
-    fText(225, 275, '쇠붙이에만 반응', 19, F.D, 'middle'),
-
-    fLine(450, 60, 450, 300, '#2f5c85', 2),
-
-    fText(675, 40, 'S4 · 정전용량형', 26, '#a78bfa', 'middle', 700),
-    `<circle cx="675" cy="120" r="46" fill="#15304a" stroke="#a78bfa" stroke-width="3"/>`,
-    fText(675, 130, '전부', 22, '#a78bfa', 'middle', 700),
-    fText(675, 195, '금속 → ON', 22, F.OK, 'middle', 700),
-    fText(675, 230, '비금속 → ON', 22, F.OK, 'middle', 700),
-    fText(675, 275, '재질과 상관없이 반응', 19, F.D, 'middle'),
-
-    fText(450, 320, '그래서 비금속 = S4 켜짐 · S3 꺼짐 (S4 · S3̄)', 23, F.G, 'middle', 700)
-  ].join('')),
-
-  /* 리밋스위치 */
-  limitsw: () => svg(900, 290, [
-    fText(450, 40, '"동작이 끝났다"를 무엇으로 아는가?', 24, F.T, 'middle', 700),
-    fBox(60, 90, 340, 120, '시간으로 센다', F.BAD, '2초 뒤엔 끝났겠지'),
-    fBox(500, 90, 340, 120, '리밋스위치로 확인', F.OK, 'LS2가 켜지면 끝난 것'),
-    fText(230, 245, '공기압이 약하면 아직 안 갔는데', 19, F.BAD, 'middle'),
-    fText(230, 272, '다음 동작을 시작한다 → 충돌', 19, F.BAD, 'middle', 700),
-    fText(670, 245, '실제로 도착했는지 확인하고 넘어간다', 19, F.OK, 'middle'),
-    fText(670, 272, '이래야 안전하다', 19, F.OK, 'middle', 700)
-  ].join('')),
-
-  /* 편솔 · 양솔 */
-  valves: () => svg(900, 340, [
-    fText(225, 38, '편솔레노이드', 26, F.A, 'middle', 700),
-    fBox(90, 75, 270, 80, 'SOL 하나', F.A, ''),
-    fText(225, 190, 'SOL ON → 전진', 21, F.T, 'middle'),
-    fText(225, 225, 'SOL OFF → 스프링으로 복귀', 21, F.G, 'middle', 700),
-    fText(225, 285, '끊기만 하면 저절로 돌아온다', 19, F.D, 'middle'),
-    fText(225, 315, '가공 · 송출 · 배출실린더', 19, F.OK, 'middle', 700),
-
-    fLine(450, 60, 450, 320, '#2f5c85', 2),
-
-    fText(675, 38, '양솔레노이드', 26, '#a78bfa', 'middle', 700),
-    fBox(540, 75, 270, 80, 'SOL 두 개', '#a78bfa', ''),
-    fText(675, 190, 'SOL1 ON → 전진', 21, F.T, 'middle'),
-    fText(675, 225, 'SOL2 ON → 후진', 21, F.T, 'middle'),
-    fText(675, 285, '돌아오라고 따로 명령해야 한다', 19, F.D, 'middle'),
-    fText(675, 315, '공급실린더 (SOL1/SOL2)', 19, F.OK, 'middle', 700)
-  ].join('')),
-
-  /* TON 타이머 */
-  timer: () => svg(900, 320, [
-    fText(450, 36, 'TON — 켜진 뒤 정해진 시간이 지나야 출력', 24, F.T, 'middle', 700),
-    // 입력 파형
-    fText(60, 100, '입력', 20, F.D),
-    fLine(140, 120, 300, 120), fLine(300, 120, 300, 75), fLine(300, 75, 700, 75),
-    fLine(700, 75, 700, 120), fLine(700, 120, 840, 120),
-    // 출력 파형
-    fText(60, 220, 'T.Q', 20, F.G),
-    fLine(140, 240, 460, 240), fLine(460, 240, 460, 195, F.G), fLine(460, 195, 700, 195, F.G, 4),
-    fLine(700, 195, 700, 240, F.G), fLine(700, 240, 840, 240),
-    // 지연 표시
-    fLine(300, 60, 300, 260, '#2f5c85', 2),
-    fLine(460, 60, 460, 260, '#2f5c85', 2),
-    fArrow(300, 285, 460, 285, F.G),
-    fText(380, 310, 'PT = T#2S (2초)', 21, F.G, 'middle', 700),
-    fText(755, 160, '입력이 끊기면', 18, F.D, 'middle'),
-    fText(755, 182, '즉시 꺼진다', 18, F.D, 'middle')
-  ].join('')),
-
-  /* 스텝 공식 */
-  stepformula: () => svg(900, 340, [
-    fText(450, 40, '(전환조건 + A<tspan font-size="16">n</tspan>) · A<tspan font-size="16">n-1</tspan> → A<tspan font-size="16">n</tspan>',
-      30, F.G, 'middle', 800),
-    fLine(60, 80, 60, 280, F.W, 3),
-    fLine(840, 80, 840, 280, F.W, 3),
-    // 전환조건 + 자기유지 분기
-    fLine(60, 160, 140, 160),
-    fContact(180, 160, 'LS2', false),
-    fLine(220, 160, 320, 160),
-    fLine(140, 160, 140, 230), fLine(140, 230, 190, 230),
-    fContact(230, 230, 'A2', false, F.G),
-    fLine(270, 230, 320, 230), fLine(320, 230, 320, 160),
-    // 직전 스텝(분기 밖)
-    fLine(320, 160, 450, 160),
-    fContact(490, 160, 'A1', false),
-    fLine(530, 160, 690, 160),
-    fCoil(720, 160, 'A2'),
-    fLine(740, 160, 840, 160),
-    fText(230, 285, '자기유지는 전환조건만 감싼다', 19, F.G, 'middle', 700),
-    fText(490, 285, '직전 스텝은 분기 밖 직렬', 19, F.A, 'middle', 700),
-    fText(450, 325, '앞 스텝이 꺼지면 나도 같이 꺼진다 — 이게 핵심', 22, F.T, 'middle', 700)
-  ].join('')),
-
-  /* 스텝 체인과 리셋 */
-  stepchain: () => svg(900, 300, [
-    ...[0,1,2,3].map((n,i) => fBox(50 + i*160, 90, 120, 70, 'A' + (n+1), i===0 ? F.G : F.A, '')),
-    fBox(690, 90, 150, 70, 'A12', F.BAD, '마지막'),
-    ...[0,1,2].map(i => fArrow(170 + i*160, 125, 210 + i*160, 125)),
-    fArrow(650, 125, 690, 125),
-    fText(600, 130, '···', 30, F.D, 'middle'),
-    // A12가 A1을 끊는 화살표
-    fLine(765, 160, 765, 230, F.BAD, 3),
-    fLine(765, 230, 110, 230, F.BAD, 3),
-    fArrow(110, 230, 110, 160, F.BAD),
-    fText(437, 262, 'A12가 켜지면 A1을 끊는다 → 체인 전체가 한꺼번에 꺼져 초기화', 21, F.BAD, 'middle', 700),
-    fText(437, 45, '스텝은 도미노처럼 차례로 넘어간다', 22, F.T, 'middle', 700)
-  ].join('')),
-
-  /* 변위단계선도 읽기 */
-  disp: () => {
-    const L = 150, R = 860, top = 80, rowH = 62, N = 9;
-    const x = s => L + (s-1)*((R-L)/(N-1));
-    const rows = [
-      { n:'공급실린더', e:[[1,1],[3,0]] },
-      { n:'가공실린더', e:[[3,1],[6,0]] },
-      { n:'송출실린더', e:[[6,1],[8,0]] }
-    ];
-    let s = '';
-    for(let i=1;i<=N;i++){
-      s += fLine(x(i), top-14, x(i), top + rows.length*rowH + 6, '#2f5c85', 1.5);
-      s += fText(x(i), top-24, i===N?'9=1':i, 18, F.D, 'middle');
-    }
-    rows.forEach((r, ri) => {
-      const y0 = top + ri*rowH + 40, y1 = top + ri*rowH + 8;
-      s += fText(140, (y0+y1)/2 + 6, r.n, 20, F.T, 'end', 700);
-      let cur = 0, px = x(1);
-      const pts = [[x(1), y0]];
-      r.e.forEach(([at, to]) => {
-        pts.push([x(at), cur ? y1 : y0]);
-        pts.push([x(at+1), to ? y1 : y0]);
-        cur = to; px = x(at+1);
-      });
-      pts.push([x(N), cur ? y1 : y0]);
-      s += `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${F.A}" stroke-width="4"/>`;
-      s += fText(148, y1 + 6, '1', 15, F.D, 'end');
-      s += fText(148, y0 + 6, '0', 15, F.D, 'end');
-    });
-    s += fText(505, top + rows.length*rowH + 46, '선이 올라간 구간 = 전진(하강) · 내려간 구간 = 후진(상승)', 21, F.G, 'middle', 700);
-    s += fText(505, top + rows.length*rowH + 76, '세로선 하나가 한 단계 — 9단계에서 1단계로 돌아온다', 19, F.D, 'middle');
-    return svg(900, top + rows.length*rowH + 96, s);
-  }
-};
+/* ── 그림 ─────────────────────────────────────────────────
+   fig:'키' 의 그림은 figs.js(links/fig.js 로 그림)에 있다 — 배우기 쪽과 같은 그림을 쓴다.
+   (2026-09-30 그림08 — 예전에 여기 있던 어두운 화면용 그림 14장을 figs.js 로 옮겨 흰 종이 규격으로 다시 그렸다)
+   ─────────────────────────────────────────────────────────── */
 
 /* ── 수업 슬라이드 ────────────────────────────────────────── */
 const LESSON = [
@@ -461,7 +162,8 @@ const LESSON = [
  anso:['전환조건만','직전 스텝만','전환조건과 직전 스텝 모두','코일까지 포함'], ansa:0,
  anse:'<b>전환조건만</b> 감싼다. 직전 스텝은 분기 밖 직렬 — 그래야 앞이 끊기면 연쇄로 꺼진다.'},
 
-{u:'6. 스텝 제어 (핵심)', t:'B체인과 A체인을 나누는 이유',
+{u:'6. 스텝 제어 (핵심)', t:'B체인과 A체인을 나누는 이유', fig:'abchain',
+ cap:'시작 버튼도, 끊는 스텝도 따로 — 한 프로그램 안에서 서로 엉키지 않는다',
  pts:['한 프로그램에 <b>테스트동작·단속·연속·부가조건</b>이 전부 들어가야 한다.',
       '섞으면 서로 간섭한다 → <b>테스트동작은 B</b>, <b>단속·연속은 A</b>로 체인을 따로 만든다.',
       'B체인은 <b>PB1</b>로, A체인은 <b>PB2(단속)·PB3(연속)</b>로 시작한다.',
@@ -483,7 +185,8 @@ const LESSON = [
  anso:['실린더 전진','실린더 후진','정지','속도가 느려짐'], ansa:1,
  anse:'0이 후진(가공실린더는 상승), 1이 전진(가공실린더는 하강)이다.'},
 
-{u:'7. 시험 조건 읽기', t:'부가조건 3종과 비상정지',
+{u:'7. 시험 조건 읽기', t:'부가조건 3종과 비상정지', fig:'estop',
+ cap:'비상정지 — 누를 때는 거의 같고, 해제한 뒤가 문제마다 다르다',
  pts:['<b>부가조건 1</b> — 대개 <b>램프</b>. 매거진 유무·재질·개수에 따라 점등/점멸.',
       '<b>부가조건 2</b> — 문제마다 다르다. 반복 동작, PB3 중간 조작, 종료 조건 등.',
       '<b>부가조건 3</b> — <b>비상정지</b>. 현재 상태로 정지 + 녹·황 소등 + 적색 점멸(또는 점등).',
@@ -493,7 +196,8 @@ const LESSON = [
  anso:['테스트동작만 되면','단속동작만 되면','연속동작이 이상 없이 될 때만','항상 채점한다'], ansa:2,
  anse:'문제지에 "부가조건 1, 2, 3은 <b>연속동작이 이상없이 작동되는 경우에만</b> 채점합니다"라고 적혀 있다.'},
 
-{u:'7. 시험 조건 읽기', t:'시험장에서 만드는 순서',
+{u:'7. 시험 조건 읽기', t:'시험장에서 만드는 순서', fig:'order',
+ cap:'테스트동작이 안 되면 실격 · 부가조건은 연속동작이 될 때만 채점',
  pts:['① <b>I/O 배선</b>과 할당 — 표를 보고 정확히. 여기서 틀리면 전부 어긋난다.',
       '② <b>테스트동작(B체인)</b> — 안 되면 실격이므로 가장 먼저 완성한다.',
       '③ <b>단속동작(A체인)</b> — 공정순서도를 스텝으로 옮긴다. PB2로 1사이클.',
@@ -505,4 +209,3 @@ const LESSON = [
 ];
 
 window.LESSON = LESSON;
-window.FIGS = FIGS;
